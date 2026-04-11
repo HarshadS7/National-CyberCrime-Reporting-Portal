@@ -1,0 +1,202 @@
+## Final Unified Implementation Context — NERVE / CortexReach
+
+---
+
+### Product Statement
+
+An autonomous Mastra-native agentic engine that ingests lead data, reasons through real-time signals, executes multi-channel outreach automatically, monitors responses, and continuously self-learns to optimize every future campaign. The core distinction: this is a decision-making system that also executes and learns — not just another messaging automation tool.
+
+---
+
+### What Makes This Win
+
+The strongest angle from both documents is the combination of three things that no existing tool does together: transparent reasoning (every decision explained), autonomous execution (actual sends via real APIs), and a compounding learning loop (weights update after every response). Judges will see AI that thinks, acts, and improves — in one demo.
+
+---
+
+### The 10 Agents — Final Definitive List
+
+**Agent 1 — Lead Ingestion Agent**
+Accepts leads from CSV, Apollo export, manual form, or CRM webhook. Enriches via Apollo API to add company size, funding stage, tech stack, and verified contact details. Runs deduplication to prevent re-contacting active sequences. Outputs a validated, enriched lead JSON object into Mastra's shared MemoryStore. Nothing downstream starts until this object is confirmed clean.
+
+**Agent 2 — Signal Scout (Pulse Intelligence)**
+Fires in parallel with Agents 3 and 4. Searches for real-time company triggers in the last 30 days — funding rounds, product launches, executive hires, geographic expansion, hiring spikes. Checks LinkedIn for recent activity from the target person (posting frequency as a proxy for receptiveness). Each signal is tagged with a recency weight. Output is a ranked signal vector: funding event 11 days ago scores HIGH, LinkedIn post 3 days ago scores HIGH, 12 open engineering roles scores MEDIUM.
+
+**Agent 3 — Intent Scorer**
+Fires in parallel with Agents 2 and 4. Runs a weighted scoring model across ICP fit, seniority, geography, industry relevance, engagement history, and the signal weight from Agent 2. Outputs a composite score from 0 to 100 with a full attribution breakdown showing which factors contributed most. Critically, the weights powering this model are not static — Agent 10 updates them after every campaign outcome, making the scorer smarter with every lead processed.
+
+**Agent 4 — Persona Analyst**
+Fires in parallel with Agents 2 and 3. Maps job title, seniority, industry, and LinkedIn writing style to one of four communication archetypes. Strategic Executive responds to insight-led, ROI-focused openers. Practitioner responds to peer-level, problem-specific messaging. Innovator responds to challenger framing that questions the status quo. Networker responds to relationship-first, low-pressure openers. This archetype becomes the tone rulebook passed to Agent 6.
+
+**Agent 5 — Strategy Commander (Decision Core)**
+The central decision brain. Receives the signal bundle, intent score, and persona archetype and makes four explicit decisions: which channel to use (LinkedIn DM if active in last 7 days, WhatsApp added as secondary channel for India-based high-score leads, cold email if LinkedIn activity is low), what exact timestamp to send at (timezone-aware, seniority-aware, day-of-week optimized), which tone framework to apply (modulated by both persona archetype and live signals — a funding announcement shifts toward growth-urgency framing), and a full 3-touch cadence schedule with day offsets. Every decision is logged verbatim for Agent 7. Output is a structured strategy JSON object written to shared memory.
+
+**Agent 6 — Content Forge (Content Intelligence)**
+Generates all content for the full cadence using Claude as the LLM backbone. Produces Touch 1, Touch 2, and Touch 3 messages each formatted for the selected channel — LinkedIn DMs are short and conversational, emails allow more structure, WhatsApp messages are punchy and direct. Injects the live signal from Agent 2 directly into Touch 1 to make the opener hyper-relevant. Also generates a LinkedIn thought-leadership post written in the target's own style for authority-building, and a LinkedIn headline suggestion for the sender to optimize their own profile before reaching out.
+
+**Agent 7 — Explainer Agent (Rationale and Visualization)**
+Reads the full trace of every decision made across all previous agents and converts it into plain-English rationale. Output powers the Decision Theatre panel in the UI: "LinkedIn DM selected because target posted 3 days ago. Tuesday 10am IST selected because VP-level India lead. Challenger tone selected because Strategic Executive archetype. Series B signal injected because high-recency trigger." Also generates the data structure that feeds the live agent graph on the frontend.
+
+**Agent 8 — Delivery Agent (Execution)**
+Sends all messages through the strategy-selected platforms automatically. LinkedIn DM via HeyReach API. WhatsApp via Aisensy or Wati API. Email via Resend or SendGrid. Touch 1 sends immediately or at the scheduled timestamp. Touches 2 and 3 are queued in Mastra's scheduler. Every send is logged with a delivery receipt. Failed sends retry with exponential backoff before escalating. A Simulation Mode toggle mocks all API calls but shows identical UI behavior — critical for safe demo.
+
+**Agent 9 — Response Monitor**
+Listens on webhook endpoints from all platforms for any signal from the lead. Classifies incoming events with NLP sentiment: positive (interested, proposed a call), neutral (acknowledged, non-committal), negative (not interested, unsubscribe), or no-reply (timeout reached). Based on classification it either suppresses remaining touches and escalates to human (positive), continues the cadence (neutral or no-reply), or cancels the sequence and flags do-not-contact (negative). All events stored with timestamps.
+
+**Agent 10 — Learning Loop Agent**
+Runs after every response event. Analyzes the full outcome — score, channel used, tone used, timing, and actual response — and updates three things: the Intent Scorer's dimension weights (signals that correlate with positive responses get higher weight), the Strategy Commander's channel and timing heuristics (patterns that worked get reinforced), and the Persona Analyst's tone rules (archetypes that responded better to softer openers than expected get their rules adjusted). Updated weights write back to Mastra's model registry. The next lead runs against the improved model. This is the compounding flywheel — more leads processed means higher response rates means better weight updates means smarter scoring.
+
+---
+
+### Orchestration Logic
+
+Mastra's Workflow engine manages the entire graph as a state machine. The flow is:
+
+Lead input triggers Agent 1. On validation success, Mastra dispatches Agents 2, 3, and 4 simultaneously and waits for all three to resolve. Agent 5 receives all three outputs and produces the strategy object. Mastra then dispatches Agents 6 and 7 simultaneously. Agent 8 receives the content from Agent 6 and executes sends. Agent 9 enters a listening state. When a response event fires, Agent 10 runs, updates the model, and the Supervisor decides whether to trigger a follow-up loop back to Agent 5 with updated context, or close the sequence.
+
+Conditional branches: high-intent signal plus positive response routes to immediate human escalation. Negative reply routes to soft re-engagement tone on next cycle. No-reply after 7 days routes to a nurture sequence using the LinkedIn thought-leadership post generated by Agent 6.
+
+All agents share a single Mastra MemoryStore — per-lead context plus a global knowledge base of weights, heuristics, and outcome history.
+
+---
+
+### Tech Stack
+
+Backend: Mastra running on Node.js with TypeScript. One workflow file defining the entire agent graph. Each agent is a Mastra Agent with its own instructions, tools, and memory access.
+
+Frontend: Next.js 15 with React Flow for the live agent graph, Tailwind for styling, shadcn/ui for components. Real-time updates via Server-Sent Events or Supabase Realtime pushing agent status changes to the graph nodes.
+
+LLM: Claude claude-sonnet-4-20250514 powering all agents, particularly Content Forge and the Explainer.
+
+Data: Apollo API for enrichment, Tavily or Serper for real-time signal search, Crunchbase for funding data.
+
+Outreach APIs: HeyReach for LinkedIn, Aisensy or Wati for WhatsApp with webhook support, Resend for email.
+
+Storage: Mastra MemoryStore for agent shared state, SQLite or Supabase for persistent weight storage and campaign history.
+
+---
+
+### The Demo Script (What Judges Actually See)
+
+The UI has a single dashboard with a live agent graph in the center built in React Flow. Each agent is a node that changes color — blue for idle, pulsing purple for running, green for complete. Animated edges show data flowing between agents in real time.
+
+1. Enter a lead — Rahul Sharma, VP Sales, SaaS company, Mumbai, just raised Series B.
+2. Hit Execute. Watch Agent 1 validate and enrich. Progress bar moves.
+3. Agents 2, 3, and 4 light up simultaneously. The graph shows three parallel threads of animated edges.
+4. Intent score builds live on the right panel as Agent 3 completes — lands at 87/100.
+5. Agent 5 fires. Strategy card populates: LinkedIn DM, Tuesday 10am IST, Challenger tone, 3-touch cadence.
+6. Agents 6 and 7 fire in parallel. Message content appears. Decision Theatre panel fills with rationale.
+7. Agent 8 sends. Activity log shows "LinkedIn DM sent — Message ID confirmed."
+8. Click "Simulate Reply: Interested, let's talk." Agent 9 lights up, classifies as Positive.
+9. Agent 10 fires — learning loop animation plays, weight update notification appears: "Series B signal weight increased from 40 to 55 based on positive outcome."
+10. Supervisor closes sequence and flags for human handoff.
+11. Run the "What If" demo — toggle off the funding signal and watch the score drop to 61 and the strategy shift from LinkedIn DM to cold email. This shows the reasoning is genuine, not hardcoded.
+
+Total demo runtime: 3 to 4 minutes. Fast enough to be impressive, slow enough for judges to follow every step.
+
+---
+
+### The One Thing That Separates This From Every Other Entry
+
+Every other team will build AI that writes outreach messages. You are building AI that decides, executes, watches, and learns — with every single decision visible and explained in real time. The Decision Theatre plus the live self-learning weight update animation is the moment that will win the room. No one else will have a system that visibly gets smarter in front of the judges' eyes.
+
+
+
+
+
+
+## How Messages Are Actually Sent and Responses Read
+
+---
+
+### LinkedIn
+
+**Sending DMs**
+
+You cannot send LinkedIn DMs directly through LinkedIn's official API — they don't expose that publicly. So you use third-party automation tools that sit on top of LinkedIn accounts via browser automation or their own licensed access.
+
+HeyReach is the cleanest option for this. You connect a LinkedIn account to HeyReach, and then call their REST API to create a campaign, add a lead, and trigger a message send. HeyReach handles the actual sending from that connected LinkedIn account, including respecting LinkedIn's daily limits to avoid account bans. Waalaxy works the same way. The API call is straightforward — you pass the LinkedIn profile URL of the target and the message body, and HeyReach queues and sends it.
+
+For a hackathon you can also use Phantombuster, which runs LinkedIn automation as a "phantom" (a cloud browser session). You trigger it via their API with a lead list and message template.
+
+**Reading Responses**
+
+HeyReach provides webhooks. When the connected LinkedIn account receives a reply in LinkedIn's messaging inbox, HeyReach detects it and fires a POST request to your webhook endpoint with the sender's profile, the message content, and a timestamp. Your Agent 9 listens on that webhook route and processes the incoming payload. If webhooks aren't available in the plan, the fallback is polling HeyReach's API every few minutes to check for new replies in the inbox.
+
+---
+
+### WhatsApp
+
+**Sending Messages**
+
+WhatsApp Business API is the official route but getting approved takes time. For a hackathon you use Aisensy or Wati, which are official WhatsApp Business Solution Providers — they have pre-approved API access and give you a dashboard plus REST API on top of it.
+
+You register a WhatsApp Business number through either platform. Then your Delivery Agent calls their API with the recipient's phone number and either a pre-approved template message (for first contact, since WhatsApp requires templates for outbound) or a free-form session message (if the recipient has messaged you in the last 24 hours). The template needs to be submitted and approved in advance — this is the one thing you need to do before the hackathon, as approval takes a few hours to a day.
+
+Aisensy's API is simple — a POST request with the phone number, template name, and variable values (where your personalized content slots in).
+
+**Reading Responses**
+
+Both Aisensy and Wati support webhooks natively. When the lead replies on WhatsApp, the platform fires a POST to your configured webhook URL with the message body, sender number, and timestamp. Agent 9 receives this, runs sentiment classification on the message text, and triggers the appropriate next step in the Mastra workflow.
+
+---
+
+### Email
+
+**Sending**
+
+Resend is the cleanest for a hackathon — simple API, generous free tier, excellent deliverability. You make a POST call with from address, to address, subject, and HTML or plain text body. Alternatively SendGrid works the same way and has a free tier. For cold outreach at scale you'd want a warmed-up sending domain, but for a demo any verified domain works.
+
+**Reading Responses**
+
+This is the trickiest channel. There are three signals you can track. Opens and clicks are tracked by embedding a 1x1 pixel tracking image and replacing links with redirect URLs — both Resend and SendGrid handle this automatically and fire webhooks when they detect an open or click. Actual replies require either using an inbound email parsing service (SendGrid's Inbound Parse webhook forwards incoming emails to your endpoint as POST requests with the parsed body), or using a mailbox polling approach where you check a dedicated reply-to inbox via IMAP every few minutes using a library like node-imap. For a hackathon, the simplest path is to set a reply-to address that routes through SendGrid Inbound Parse, which then fires a webhook to your Agent 9 endpoint.
+
+---
+
+### Integrations and APIs — Full List
+
+**Data and Enrichment**
+
+Apollo.io API — lead enrichment. Given a name, company, or email, returns verified email, phone, job title, company size, funding stage, tech stack, LinkedIn URL. Has a free tier with limited credits. This is how Agent 1 enriches raw lead inputs into complete profiles.
+
+Crunchbase API — funding data. Useful for Signal Scout to fetch the most recent funding round for a company, amount raised, investors, and date. Has a basic free tier.
+
+Tavily API or Serper API — real-time web search. This is how Signal Scout finds recent news about a company. You pass a search query like "NovaTech SaaS news 2025" and get back structured results with titles, snippets, and dates. Tavily is built specifically for AI agents and returns cleaner structured data. Both have free tiers sufficient for a hackathon.
+
+**LinkedIn Automation**
+
+HeyReach API — campaign creation, message sending, inbox reply webhooks. Requires connecting a LinkedIn account to the HeyReach dashboard. Paid tool but has trial access.
+
+Phantombuster — alternative if HeyReach access is a problem. Cloud-based LinkedIn automation triggered via API. Has a free trial.
+
+**WhatsApp**
+
+Aisensy API — template message sending, session messages, inbound message webhooks. Requires a WhatsApp Business number and pre-approved templates.
+
+Wati API — same functionality, slightly different API structure. Also requires pre-approved templates for outbound first contact.
+
+**Email**
+
+Resend API — sending, open tracking, click tracking, bounce handling. Generous free tier.
+
+SendGrid Inbound Parse — receiving and parsing inbound email replies as webhook POST requests.
+
+**AI and LLM**
+
+Anthropic API — Claude claude-sonnet-4-20250514 powers Content Forge and the Explainer Agent. You call the messages endpoint with your agent's system prompt and the lead context, and get back the generated message.
+
+**Storage and Memory**
+
+Mastra MemoryStore — built into Mastra, handles per-agent and shared cross-agent memory within a workflow run.
+
+Supabase or SQLite — persistent storage for campaign history, weight values for the Learning Loop, response logs, and lead status. Supabase gives you a REST API on top of Postgres and has a free tier, which makes it easy to query from both the backend agents and the frontend dashboard.
+
+**Real-time Frontend Updates**
+
+Server-Sent Events or Supabase Realtime — whenever an agent changes state (idle to running to done), that change needs to push to the frontend so the React Flow graph updates live. SSE is the simplest to implement — your Next.js API route streams events to the browser as agents fire. Supabase Realtime is cleaner if you're already using Supabase, because you just listen to database row changes on the frontend.
+
+---
+
+### The One Practical Constraint to Solve Before Building
+
+WhatsApp template approval and a warmed LinkedIn account are the two things that need to happen before the hackathon starts, not during it. Templates take up to 24 hours to approve. A fresh LinkedIn account sending DMs immediately will get rate-limited or flagged. If you're using an existing aged LinkedIn account connected to HeyReach, this is not a problem. If you're starting fresh, use Simulation Mode for LinkedIn and WhatsApp in the demo and show the API call payload and mock response in the UI — judges care about the architecture and reasoning layer far more than whether the actual send went through.
