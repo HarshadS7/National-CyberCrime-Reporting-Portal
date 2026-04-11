@@ -5,10 +5,10 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function loadEnv() {
-  // Try server/.env first, then workspace root/.env
+  // Try server/.env first (from server/src/config.ts → server/.env)
   const candidates = [
-    resolve(__dirname, "../../.env"),  // server/.env (from src/config.ts)
-    resolve(__dirname, "../../../.env"), // HackX/.env
+    resolve(__dirname, "../.env"),     // server/.env (from src/config.ts → ../)
+    resolve(__dirname, "../../.env"),   // HackX/.env (fallback)
   ];
 
   for (const envPath of candidates) {

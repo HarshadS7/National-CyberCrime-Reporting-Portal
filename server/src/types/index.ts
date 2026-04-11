@@ -273,6 +273,7 @@ export type SSEEventType =
   | "delivery_update"
   | "response_update"
   | "learning_update"
+  | "branch_decision"
   | "error"
   | "pipeline_complete";
 
