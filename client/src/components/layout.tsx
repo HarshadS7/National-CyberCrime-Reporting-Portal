@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,9 +16,9 @@ import { api } from "@/lib/api";
 import { GlowingBadge } from "@/components/ui/motion";
 
 const NAV = [
-  { to: "/", icon: LayoutDashboard, label: "Command Center", description: "Pipeline overview" },
-  { to: "/new", icon: UserPlus, label: "New Mission", description: "Launch pipeline" },
-  { to: "/activity", icon: Activity, label: "Activity", description: "System logs" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Command Center", description: "Pipeline overview" },
+  { to: "/dashboard/new", icon: UserPlus, label: "New Mission", description: "Launch pipeline" },
+  { to: "/dashboard/activity", icon: Activity, label: "Activity", description: "System logs" },
 ] as const;
 
 export default function Layout() {
@@ -49,13 +49,13 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="w-64 shrink-0 border-r border-border bg-sidebar flex flex-col relative overflow-hidden">
         {/* Subtle gradient overlay */}
-        <div className="absolute inset-0 bg-linear-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-linear-to-b from-green-deep/5 via-transparent to-transparent pointer-events-none" />
 
         {/* Logo */}
-        <div className="relative z-10 p-5 pb-4">
+        <Link to="/dashboard" className="relative z-10 p-5 pb-4 block hover:opacity-80 transition-opacity">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="size-10 rounded-xl bg-linear-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
+              <div className="size-10 rounded-xl bg-linear-to-br from-green-deep to-green-mid flex items-center justify-center shadow-lg shadow-green-deep/20">
                 <Cpu className="size-5 text-white" />
               </div>
               <div className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-emerald-400 border-2 border-sidebar animate-pulse" />
@@ -67,7 +67,7 @@ export default function Layout() {
               </p>
             </div>
           </div>
-        </div>
+        </Link>
 
         {/* Divider */}
         <div className="relative z-10 mx-4 h-px bg-linear-to-r from-transparent via-border to-transparent" />
@@ -75,12 +75,12 @@ export default function Layout() {
         {/* Navigation */}
         <nav className="relative z-10 flex-1 p-3 space-y-1 mt-2">
           {NAV.map(({ to, icon: Icon, label, description }) => {
-            const isActive = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
+            const isActive = to === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(to);
             return (
               <NavLink
                 key={to}
                 to={to}
-                end={to === "/"}
+                end={to === "/dashboard"}
                 className="block relative"
               >
                 <div
@@ -99,7 +99,7 @@ export default function Layout() {
                   )}
                   <div className={`size-8 rounded-lg flex items-center justify-center transition-colors ${
                     isActive
-                      ? "bg-primary/15 text-primary"
+                      ? "bg-green-deep/15 text-green-deep"
                       : "bg-muted/50 text-muted-foreground group-hover:bg-muted"
                   }`}>
                     <Icon className="size-4" />
@@ -108,7 +108,7 @@ export default function Layout() {
                     <p className={`font-medium text-[13px] ${isActive ? "text-foreground" : ""}`}>{label}</p>
                     <p className="text-[10px] text-muted-foreground truncate">{description}</p>
                   </div>
-                  {isActive && <ChevronRight className="size-3.5 text-primary opacity-60" />}
+                  {isActive && <ChevronRight className="size-3.5 text-green-deep opacity-60" />}
                 </div>
               </NavLink>
             );
@@ -166,8 +166,8 @@ export default function Layout() {
       {/* Main content area */}
       <main className="flex-1 overflow-hidden relative">
         {/* Subtle corner gradient */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-linear-to-bl from-primary/3 to-transparent pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-linear-to-tr from-purple-500/3 to-transparent pointer-events-none" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-linear-to-bl from-green-deep/5 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-linear-to-tr from-green-light/5 to-transparent pointer-events-none" />
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}

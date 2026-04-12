@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 
 const STATUS_BADGE: Record<string, { color: string; label: string }> = {
-  pipeline_running: { color: "purple", label: "Running" },
+  pipeline_running: { color: "emerald", label: "Running" },
   pipeline_complete: { color: "emerald", label: "Complete" },
   enriched: { color: "cyan", label: "Enriched" },
   error: { color: "red", label: "Error" },
@@ -92,8 +92,8 @@ export default function DashboardPage() {
                 <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
-              <Link to="/new">
-                <Button size="sm" className="gap-1.5 bg-linear-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 text-white border-0 shadow-lg shadow-primary/20">
+              <Link to="/dashboard/new">
+                <Button size="sm" className="gap-1.5 bg-linear-to-r from-green-deep to-green-mid hover:from-green-deep/90 hover:to-green-mid/90 text-white border-0 shadow-lg shadow-green-deep/20">
                   <Plus className="size-3.5" /> Launch Pipeline
                 </Button>
               </Link>
@@ -276,8 +276,8 @@ export default function DashboardPage() {
                       <p className="text-xs text-muted-foreground mb-4">
                         Launch your first autonomous outreach pipeline
                       </p>
-                      <Link to="/new">
-                        <Button size="sm" className="gap-1.5 bg-linear-to-r from-primary to-purple-600 text-white border-0">
+                      <Link to="/dashboard/new">
+                        <Button size="sm" className="gap-1.5 bg-linear-to-r from-green-deep to-green-mid text-white border-0">
                           <Plus className="size-3.5" /> Launch Pipeline
                         </Button>
                       </Link>
@@ -298,7 +298,7 @@ export default function DashboardPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
                     >
-                      <Link to={`/pipeline/${lead.id}`} className="block group">
+                      <Link to={`/dashboard/pipeline/${lead.id}`} className="block group">
                         <Card className="border-border/40 bg-card/40 backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:bg-card/60 group-hover:shadow-lg group-hover:shadow-primary/5">
                           <CardContent className="p-4 flex items-center gap-4">
                             <div className="size-11 rounded-xl bg-linear-to-br from-primary/15 to-purple-500/10 flex items-center justify-center shrink-0 group-hover:from-primary/25 group-hover:to-purple-500/20 transition-all">

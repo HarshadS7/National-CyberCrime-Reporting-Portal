@@ -80,7 +80,7 @@ export default function PipelinePage() {
     <div className="h-full flex flex-col overflow-hidden">
       {/* ── Top Bar ─────────────────────────────────────────── */}
       <div className="shrink-0 px-4 py-2.5 border-b border-border/40 flex items-center gap-3 bg-card/20 backdrop-blur-sm">
-        <Link to="/">
+        <Link to="/dashboard">
           <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs hover:bg-primary/10 hover:text-primary">
             <ArrowLeft className="size-3" /> Back
           </Button>

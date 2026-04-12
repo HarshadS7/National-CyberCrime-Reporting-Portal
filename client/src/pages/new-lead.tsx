@@ -61,7 +61,7 @@ export default function NewLeadPage() {
         location: location.trim() || undefined,
         additionalContext: additionalContext.trim() || undefined,
       });
-      navigate(`/pipeline/${res.pipelineId}`);
+      navigate(`/dashboard/pipeline/${res.pipelineId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start pipeline");
     } finally {
@@ -83,7 +83,7 @@ export default function NewLeadPage() {
         targetGeographies: targetGeo ? targetGeo.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
         maxResults: 3,
       });
-      navigate(`/pipeline/${res.pipelineId}`);
+      navigate(`/dashboard/pipeline/${res.pipelineId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start discovery");
     } finally {
