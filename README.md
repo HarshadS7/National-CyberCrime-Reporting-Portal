@@ -110,7 +110,7 @@ MONGO_DB_NAME=nerve
 SIMULATION_MODE=false
 
 PORT=3001
-CLIENT_URL=http://localhost:5173
+CLIENT_URL=http://localhost:3000
 ```
 
 ### 3. Run
@@ -152,7 +152,7 @@ npx mastra dev
 ## API Reference
 
 ### Health
-```
+```text
 GET /api/health
 ```
 Returns server status, simulation mode, connected SSE clients, and API key presence flags.
@@ -160,7 +160,7 @@ Returns server status, simulation mode, connected SSE clients, and API key prese
 ---
 
 ### Mode 1 — Targeted (you pick the company)
-```
+```json
 POST /api/leads/execute
 {
   "companyName": "Stripe",
@@ -177,7 +177,7 @@ Returns `{ pipelineId, leadId, status: "started" }` immediately. Pipeline runs a
 ---
 
 ### Mode 2 — Discovery (AI finds companies)
-```
+```json
 POST /api/leads/discover
 {
   "productName": "CortexReach",
@@ -201,7 +201,7 @@ GET /api/leads          # All leads
 ---
 
 ### Real-time events (SSE)
-```
+```text
 GET /api/events?leadId=<id>
 ```
 
@@ -221,7 +221,7 @@ GET /api/events?leadId=<id>
 ---
 
 ### Response webhook (for real replies)
-```
+```json
 POST /api/webhook/response
 {
   "leadId": "...",
@@ -243,7 +243,7 @@ POST /api/calendar/chat          # AI chatbot for schedule queries
 ---
 
 ### Simulation toggle
-```
+```json
 POST /api/config/simulation
 { "enabled": true }
 ```
