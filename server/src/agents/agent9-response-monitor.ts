@@ -234,10 +234,46 @@ export async function simulateNoReply(
   leadId: string,
   deliveryResults: DeliveryResult[]
 ): Promise<ResponseEvent> {
-  // In a real system, this would wait for actual responses via webhooks
-  // For the hackathon pipeline, we simulate a no-reply for Touch 1
+  // In a real system, this would wait for actual responses via webhooks.
+  // For the hackathon pipeline, simulate realistic response scenarios
+  // based on the delivery channel and a deterministic hash of the lead ID.
   const firstDelivery = deliveryResults.find((d) => d.touchNumber === 1);
   const channel = firstDelivery?.channel || "email";
 
-  return runResponseMonitorAgent(leadId, channel, undefined);
+  // Deterministic "response" based on lead ID — so same lead always gets same outcome
+  const hash = leadId.split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+  const outcome = Math.abs(hash) % 100;
+
+  // Distribution: 15% positive, 10% negative, 25% neutral, 50% no_reply
+  if (outcome < 15) {
+    const positiveResponses = [
+      "Interesting timing — we were actually looking into this. Could you share more details about how this works for companies our size?",
+      "Thanks for reaching out! This looks relevant. Let's find 15 minutes this week to chat.",
+      "Hi, I saw your message. We're evaluating solutions in this space. Can you send over a deck?",
+      "Sure, happy to connect. I'm free Thursday at 2pm IST — does that work?",
+      "This caught my eye. Let's schedule a quick call — send me your Calendly.",
+    ];
+    const msg = positiveResponses[Math.abs(hash) % positiveResponses.length];
+    return runResponseMonitorAgent(leadId, channel, msg);
+  } else if (outcome < 25) {
+    const negativeResponses = [
+      "Not interested, thanks. Please remove me from your list.",
+      "We're all set in this area. Please don't follow up.",
+      "Not a priority for us right now. Thanks anyway.",
+    ];
+    const msg = negativeResponses[Math.abs(hash) % negativeResponses.length];
+    return runResponseMonitorAgent(leadId, channel, msg);
+  } else if (outcome < 50) {
+    const neutralResponses = [
+      "Thanks for the note. I'm swamped this quarter — can you follow up next month?",
+      "Interesting. Let me loop in my team and get back to you.",
+      "Appreciate the outreach. Not the best time, but keep me on your radar.",
+      "Out of office until next Monday. Will review when I'm back.",
+    ];
+    const msg = neutralResponses[Math.abs(hash) % neutralResponses.length];
+    return runResponseMonitorAgent(leadId, channel, msg);
+  } else {
+    // No reply (most common in real outreach)
+    return runResponseMonitorAgent(leadId, channel, undefined);
+  }
 }

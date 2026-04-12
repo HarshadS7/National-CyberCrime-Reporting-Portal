@@ -238,3 +238,23 @@ export interface HealthCheck {
   connectedClients: number;
   timestamp: string;
 }
+
+// ─── Calendar ───
+export interface CalendarEvent {
+  id: string;
+  leadId: string;
+  companyName: string;
+  contactName: string;
+  contactTitle: string;
+  channel: OutreachChannel;
+  touchNumber: number;
+  scheduledAt: string;
+  dayOffset: number;
+  toneFramework: ToneFramework;
+  timezone: string;
+  primaryChannel: OutreachChannel;
+  sentiment?: string;
+  action?: string;
+  tier?: string;
+  compositeScore?: number;
+}

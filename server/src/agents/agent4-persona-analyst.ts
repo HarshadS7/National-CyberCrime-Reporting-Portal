@@ -44,10 +44,15 @@ async function classifyWithLLM(lead: EnrichedLead): Promise<PersonaProfile> {
 - Title: ${lead.contactTitle}
 - Seniority: ${lead.seniority || "Unknown"}
 - Company: ${lead.companyName}
+- Domain: ${lead.companyDomain || "Unknown"}
 - Industry: ${lead.industry || "Unknown"}
-- Company Size: ${lead.companySize || "Unknown"}
-- Funding Stage: ${lead.fundingStage || "Unknown"}
-- Headquarters: ${lead.headquarters || "Unknown"}`;
+- Company Size: ${lead.companySize || "Unknown"} employees
+- Funding Stage: ${lead.fundingStage || "Unknown"}${lead.fundingAmount ? ` (${lead.fundingAmount})` : ""}
+- Headquarters: ${lead.headquarters || "Unknown"}
+- Tech Stack: ${lead.techStack?.join(", ") || "Unknown"}
+- LinkedIn: ${lead.contactLinkedIn || "Not available"}
+
+Context for classification: What does "${lead.contactTitle}" at a ${lead.companySize || "mid-size"}-employee ${lead.industry || "tech"} company (${lead.fundingStage || "growth"} stage) tell you about their daily priorities, communication style, and what messaging would resonate?`;
 
   try {
     const response = await llmGenerateText(SYSTEM_PROMPT, userMessage);

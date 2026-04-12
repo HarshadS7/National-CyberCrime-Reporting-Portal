@@ -5,20 +5,20 @@ import {
   LayoutDashboard,
   UserPlus,
   Activity,
+  Calendar,
   Settings,
   Wifi,
   WifiOff,
   Cpu,
   Zap,
-  ChevronRight,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { GlowingBadge } from "@/components/ui/motion";
 
 const NAV = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Command Center", description: "Pipeline overview" },
-  { to: "/dashboard/new", icon: UserPlus, label: "New Mission", description: "Launch pipeline" },
-  { to: "/dashboard/activity", icon: Activity, label: "Activity", description: "System logs" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Command Center", accent: "bg-primary" },
+  { to: "/dashboard/new", icon: UserPlus, label: "New Mission", accent: "bg-[#CEEBFC]" },
+  { to: "/dashboard/activity", icon: Activity, label: "Activity", accent: "bg-secondary" },
+  { to: "/dashboard/calendar", icon: Calendar, label: "Calendar", accent: "bg-[#FFDA5C]" },
 ] as const;
 
 export default function Layout() {
@@ -47,115 +47,93 @@ export default function Layout() {
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 border-r border-border bg-sidebar flex flex-col relative overflow-hidden">
-        {/* Subtle gradient overlay */}
-        <div className="absolute inset-0 bg-linear-to-b from-green-deep/5 via-transparent to-transparent pointer-events-none" />
-
+      <aside className="w-64 shrink-0 border-r-2 border-black bg-white flex flex-col">
         {/* Logo */}
-        <Link to="/dashboard" className="relative z-10 p-5 pb-4 block hover:opacity-80 transition-opacity">
+        <Link to="/dashboard" className="p-5 pb-4 block border-b-2 border-black hover:bg-secondary transition-colors">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="size-10 rounded-xl bg-linear-to-br from-green-deep to-green-mid flex items-center justify-center shadow-lg shadow-green-deep/20">
-                <Cpu className="size-5 text-white" />
-              </div>
-              <div className="absolute -top-0.5 -right-0.5 size-3 rounded-full bg-emerald-400 border-2 border-sidebar animate-pulse" />
+            <div className="size-12 rounded-md bg-primary border-2 border-black shadow-[3px_3px_0_0_#000] flex items-center justify-center">
+              <Cpu className="size-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-base tracking-tight">NERVE</h1>
-              <p className="text-[10px] text-muted-foreground tracking-[0.2em] font-medium">
-                AUTONOMOUS ENGINE
+              <h1 className="font-black text-xl tracking-tight uppercase">NERVE</h1>
+              <p className="text-[10px] text-muted-foreground tracking-[0.18em] font-bold uppercase">
+                Autonomous Engine
               </p>
             </div>
           </div>
         </Link>
 
-        {/* Divider */}
-        <div className="relative z-10 mx-4 h-px bg-linear-to-r from-transparent via-border to-transparent" />
-
         {/* Navigation */}
-        <nav className="relative z-10 flex-1 p-3 space-y-1 mt-2">
-          {NAV.map(({ to, icon: Icon, label, description }) => {
+        <nav className="flex-1 p-3 space-y-2 mt-2">
+          {NAV.map(({ to, icon: Icon, label, accent }) => {
             const isActive = to === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(to);
             return (
               <NavLink
                 key={to}
                 to={to}
                 end={to === "/dashboard"}
-                className="block relative"
+                className="block"
               >
                 <div
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 group ${
+                  className={`flex items-center gap-3 px-3 py-3 rounded-md transition-all duration-150 border-2 ${
                     isActive
-                      ? "bg-primary/10 text-foreground"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                      ? `${accent} border-black shadow-[3px_3px_0_0_#000] text-black`
+                      : "border-transparent text-black hover:border-black hover:shadow-[2px_2px_0_0_#000] hover:bg-muted/30"
                   }`}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="nav-indicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-6 rounded-r-full bg-primary"
+                      className="absolute left-0 w-1 h-8 bg-black rounded-r"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
                     />
                   )}
-                  <div className={`size-8 rounded-lg flex items-center justify-center transition-colors ${
-                    isActive
-                      ? "bg-green-deep/15 text-green-deep"
-                      : "bg-muted/50 text-muted-foreground group-hover:bg-muted"
+                  <div className={`size-8 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    isActive ? "border-black bg-white shadow-[2px_2px_0_0_#000]" : "border-transparent bg-transparent"
                   }`}>
                     <Icon className="size-4" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`font-medium text-[13px] ${isActive ? "text-foreground" : ""}`}>{label}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{description}</p>
-                  </div>
-                  {isActive && <ChevronRight className="size-3.5 text-green-deep opacity-60" />}
+                  <span className={`font-bold text-sm ${isActive ? "text-black" : "text-black/70"}`}>{label}</span>
                 </div>
               </NavLink>
             );
           })}
         </nav>
 
-        {/* Bottom section — Status */}
-        <div className="relative z-10 p-4 space-y-3">
-          <div className="mx-0 h-px bg-linear-to-r from-transparent via-border to-transparent" />
-
-          {/* Connection Status */}
-          <div className="flex items-center gap-2.5 px-2">
-            {online ? (
-              <GlowingBadge variant="emerald" pulse>
-                <Wifi className="size-3" />
-                Connected
-              </GlowingBadge>
-            ) : (
-              <GlowingBadge variant="red" pulse>
-                <WifiOff className="size-3" />
-                Offline
-              </GlowingBadge>
-            )}
+        {/* Bottom section */}
+        <div className="p-4 space-y-3 border-t-2 border-black">
+          {/* Connection status */}
+          <div
+            className={`flex items-center gap-2 px-3 py-2 rounded-md border-2 border-black font-bold text-xs uppercase tracking-wider shadow-[2px_2px_0_0_#000] ${
+              online ? "bg-[#599D77] text-white" : "bg-destructive text-white"
+            }`}
+          >
+            {online ? <Wifi className="size-3.5" /> : <WifiOff className="size-3.5" />}
+            {online ? "Connected" : "Offline"}
           </div>
 
-          {/* Sim Mode + Stats */}
-          <div className="space-y-2 px-2">
+          {/* Stats */}
+          <div className="space-y-1.5 px-1">
             {health?.simulationMode && (
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <Zap className="size-3 text-cyan-400" />
+              <div className="flex items-center gap-2 text-xs font-bold text-black border-2 border-black px-2 py-1.5 bg-secondary rounded-md shadow-[2px_2px_0_0_#000]">
+                <Zap className="size-3.5 text-black" />
                 <span>Simulation Mode</span>
-                <span className="ml-auto text-[10px] font-mono text-cyan-400">ACTIVE</span>
+                <span className="ml-auto font-black text-primary">ACTIVE</span>
               </div>
             )}
             {typeof health?.connectedClients === "number" && (
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <Activity className="size-3" />
+              <div className="flex items-center gap-2 text-xs font-bold text-black border-2 border-black px-2 py-1.5 bg-white rounded-md shadow-[2px_2px_0_0_#000]">
+                <Activity className="size-3.5" />
                 <span>SSE Streams</span>
-                <span className="ml-auto text-[10px] font-mono text-foreground">{health.connectedClients}</span>
+                <span className="ml-auto font-black">{health.connectedClients}</span>
               </div>
             )}
           </div>
 
           {/* Settings link */}
           <NavLink
-            to="/settings"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+            to="/dashboard/settings"
+            className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider text-black border-2 border-transparent hover:border-black hover:bg-muted/30 hover:shadow-[2px_2px_0_0_#000] transition-all"
           >
             <Settings className="size-3.5" />
             Settings
@@ -164,10 +142,7 @@ export default function Layout() {
       </aside>
 
       {/* Main content area */}
-      <main className="flex-1 overflow-hidden relative">
-        {/* Subtle corner gradient */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-linear-to-bl from-green-deep/5 to-transparent pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-linear-to-tr from-green-light/5 to-transparent pointer-events-none" />
+      <main className="flex-1 overflow-hidden relative bg-background">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}

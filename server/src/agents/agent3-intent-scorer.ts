@@ -43,38 +43,59 @@ async function loadWeights(): Promise<ScoringWeights> {
 // ─── Dimension Scorers (each returns 0-100) ───
 
 function scoreIcpFit(lead: EnrichedLead): { score: number; reasoning: string } {
-  let score = 50; // baseline
+  let score = 30; // low baseline — must earn the score
   const reasons: string[] = [];
 
-  // Has verified email
-  if (lead.contactEmail) {
-    score += 10;
-    reasons.push("Verified email available");
+  // Contact completeness (key for outreach ability)
+  if (lead.contactEmail && lead.contactEmail.includes("@") && !lead.contactEmail.includes("example.com")) {
+    score += 12;
+    reasons.push(`Verified email: ${lead.contactEmail}`);
+  }
+  if (lead.contactLinkedIn && lead.contactLinkedIn.includes("linkedin.com")) {
+    score += 8;
+    reasons.push(`LinkedIn profile confirmed`);
+  }
+  if (lead.contactPhone) {
+    score += 5;
+    reasons.push(`Phone number available`);
+  }
+  if (lead.contactName && lead.contactName.split(" ").length >= 2) {
+    score += 5;
+    reasons.push(`Full name identified: ${lead.contactName}`);
   }
 
-  // Has LinkedIn
-  if (lead.contactLinkedIn) {
-    score += 10;
-    reasons.push("LinkedIn profile found");
-  }
-
-  // Has company details
+  // Company intelligence depth
   if (lead.industry) {
-    score += 10;
-    reasons.push(`Industry identified: ${lead.industry}`);
+    score += 8;
+    reasons.push(`Industry: ${lead.industry}`);
   }
-  if (lead.techStack && lead.techStack.length > 0) {
+  if (lead.techStack && lead.techStack.length >= 3) {
     score += 10;
-    reasons.push(`Tech stack identified (${lead.techStack.length} technologies)`);
+    reasons.push(`Rich tech stack (${lead.techStack.length} technologies: ${lead.techStack.slice(0, 3).join(", ")}${lead.techStack.length > 3 ? "..." : ""})`);
+  } else if (lead.techStack && lead.techStack.length > 0) {
+    score += 5;
+    reasons.push(`Partial tech stack (${lead.techStack.join(", ")})`);
   }
   if (lead.companyDomain) {
     score += 5;
-    reasons.push("Company domain verified");
+    reasons.push(`Domain: ${lead.companyDomain}`);
+  }
+  if (lead.fundingStage && lead.fundingAmount) {
+    score += 7;
+    reasons.push(`Funding verified: ${lead.fundingStage} (${lead.fundingAmount})`);
+  }
+  if (lead.headquarters) {
+    score += 5;
+    reasons.push(`HQ: ${lead.headquarters}`);
+  }
+  if (lead.companySize) {
+    score += 5;
+    reasons.push(`Team size: ${lead.companySize}`);
   }
 
   return {
     score: Math.min(100, score),
-    reasoning: reasons.join(". ") || "Basic ICP match",
+    reasoning: reasons.join(". ") || "Limited ICP data available",
   };
 }
 
@@ -88,9 +109,19 @@ function scoreSeniority(lead: EnrichedLead): { score: number; reasoning: string 
   };
 
   const score = seniorityScores[lead.seniority || ""] || 40;
+  const title = lead.contactTitle || "Unknown";
+
+  const explanations: Record<string, string> = {
+    "C-Level": `${title} is a C-level executive with direct budget authority and strategic decision-making power`,
+    VP: `${title} is a VP-level leader who typically owns vendor selection and has significant budget influence`,
+    Director: `${title} is a Director-level leader who influences purchasing decisions and champions tools within their org`,
+    Manager: `${title} is a Manager-level professional who can be an internal champion but may need executive buy-in`,
+    "Individual Contributor": `${title} is an individual contributor — valuable for bottom-up adoption but limited purchasing authority`,
+  };
+
   return {
     score,
-    reasoning: `${lead.seniority || "Unknown"} seniority — ${lead.contactTitle}`,
+    reasoning: explanations[lead.seniority || ""] || `${lead.seniority || "Unknown"} seniority level — ${title}`,
   };
 }
 

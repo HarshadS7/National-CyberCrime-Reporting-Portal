@@ -57,38 +57,78 @@ function simulateTavilySearch(query: string): TavilyResult[] {
   const companyName = query.split(" ")[0] || "Company";
   const now = new Date();
 
-  return [
-    {
-      title: `${companyName} Raises Series B Funding Round`,
-      url: `https://techcrunch.com/${companyName.toLowerCase()}-series-b`,
-      content: `${companyName} has announced a $45M Series B funding round led by Sequoia Capital. The company plans to use the funds to expand its engineering team and accelerate product development across new markets.`,
-      published_date: new Date(now.getTime() - 11 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      title: `${companyName} Launches New AI-Powered Product Suite`,
-      url: `https://venturebeat.com/${companyName.toLowerCase()}-ai-product`,
-      content: `${companyName} unveiled its new AI-powered product suite at the annual SaaS conference, targeting enterprise customers looking to automate their workflows.`,
-      published_date: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      title: `${companyName} Hires Former Google VP as New CTO`,
-      url: `https://linkedin.com/posts/${companyName.toLowerCase()}-new-cto`,
-      content: `${companyName} has appointed Dr. Aisha Patel, former VP of Engineering at Google Cloud, as its new Chief Technology Officer. The hire signals the company's push into enterprise-grade infrastructure.`,
-      published_date: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      title: `${companyName} Expands Operations to Southeast Asia`,
-      url: `https://bloomberg.com/${companyName.toLowerCase()}-asia-expansion`,
-      content: `${companyName} is opening new offices in Singapore and Jakarta as part of its Asia-Pacific expansion strategy, aiming to capture the growing SaaS market in the region.`,
-      published_date: new Date(now.getTime() - 18 * 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      title: `${companyName} is Hiring: 12 Open Engineering Roles`,
-      url: `https://careers.${companyName.toLowerCase()}.com`,
-      content: `${companyName} currently has 12 open engineering positions across backend, frontend, and ML engineering, suggesting significant team growth and product investment.`,
-      published_date: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    },
+  // Use a deterministic hash so different companies get different signal mixes
+  const hash = companyName.split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+  const pick = <T>(arr: T[], offset = 0): T => arr[Math.abs(hash + offset) % arr.length];
+
+  // Company-specific signal pools
+  const fundingSignals = [
+    { title: `${companyName} Closes $45M Series B Led by Sequoia Capital`, content: `${companyName} has announced a $45M Series B funding round led by Sequoia Capital. The company plans to use the funds to expand its engineering team by 40% and accelerate product development in AI-powered features. CEO stated the round was 3x oversubscribed.` },
+    { title: `${companyName} Raises $120M Series C, Valued at $1.2B`, content: `${companyName} has achieved unicorn status after raising $120M in Series C funding led by Accel and Tiger Global. The funds will be deployed towards geographic expansion into Southeast Asia and Japan, with plans to double their customer base within 18 months.` },
+    { title: `${companyName} Secures $18M Series A to Scale Enterprise Platform`, content: `${companyName} has raised $18M in Series A funding from Lightspeed Venture Partners. The capital will fund hiring of 25 senior engineers and expansion of their go-to-market team to target mid-market enterprise accounts in North America and Europe.` },
+    { title: `${companyName} Attracts $250M Growth Round from SoftBank Vision Fund`, content: `${companyName} raised $250M in a growth round led by SoftBank Vision Fund, bringing total funding to $400M. The company reports 3x year-over-year revenue growth and plans to invest heavily in R&D and international expansion.` },
   ];
+
+  const productSignals = [
+    { title: `${companyName} Launches AI-Powered Analytics Suite for Enterprise`, content: `${companyName} unveiled its new AI-powered analytics suite at SaaS Summit 2026, featuring real-time predictive insights and automated anomaly detection. The product targets enterprise customers processing 1M+ daily events, with early adopters reporting 60% reduction in manual analysis time.` },
+    { title: `${companyName} Announces Major Platform Overhaul with GraphQL API`, content: `${companyName} released a complete platform rebuild featuring a unified GraphQL API, real-time webhooks, and a developer SDK supporting 8 programming languages. The launch follows 18 months of development and addresses the #1 customer request for programmatic access.` },
+    { title: `${companyName} Debuts Next-Gen Developer Experience Platform`, content: `${companyName} launched a next-generation developer experience platform that includes automated code review, intelligent documentation generation, and CI/CD pipeline optimization. Beta users report 35% faster deployment cycles.` },
+  ];
+
+  const hiringSignals = [
+    { title: `${companyName} Posts 45 Open Engineering Roles Across 3 Continents`, content: `${companyName} currently has 45 open engineering positions spanning backend systems, ML infrastructure, and frontend platforms across offices in Bangalore, San Francisco, and London. The aggressive hiring push follows their recent funding round and signals significant product investment.` },
+    { title: `${companyName} Engineering Team Grows 200% in 12 Months`, content: `${companyName}'s engineering headcount has grown from 50 to 150 in the past year, with particular focus on distributed systems and data engineering. They've hired senior engineers from Google, Meta, and Amazon, indicating a push towards enterprise-grade infrastructure.` },
+    { title: `${companyName} Launches Dedicated AI Research Lab, Hiring 20 ML Engineers`, content: `${companyName} announced a new AI research lab focused on applied machine learning, with plans to hire 20 ML engineers and researchers. The lab will be led by a former Google DeepMind researcher and will focus on natural language understanding for the company's core product.` },
+  ];
+
+  const executiveSignals = [
+    { title: `${companyName} Appoints Former AWS VP as New CTO`, content: `${companyName} has appointed Dr. Aisha Patel, former VP of Engineering at AWS, as its new Chief Technology Officer. Dr. Patel brings 15 years of experience scaling distributed systems and is expected to lead the company's push into enterprise-grade cloud infrastructure and multi-region deployment.` },
+    { title: `${companyName} Names Ex-Salesforce SVP as Chief Revenue Officer`, content: `${companyName} hired Rajiv Mehta, former SVP of Enterprise Sales at Salesforce, as CRO. The appointment signals a strategic shift towards upmarket enterprise sales motions. Mehta managed a $2B revenue book at Salesforce and plans to build a 100-person enterprise sales team.` },
+    { title: `${companyName} Hires Google's Head of Product as VP Product`, content: `${companyName} brought on Maria Santos, former Head of Product at Google Cloud, as VP of Product. Santos will lead the company's product strategy as they expand from a single-product company to a multi-product platform serving both developers and business users.` },
+  ];
+
+  const expansionSignals = [
+    { title: `${companyName} Opens APAC Headquarters in Singapore`, content: `${companyName} is establishing its Asia-Pacific headquarters in Singapore with a team of 30, including local sales, customer success, and engineering. The company cited 400% YoY growth in APAC revenue and strategic partnerships with regional enterprises as catalysts for the expansion.` },
+    { title: `${companyName} Expands to Europe, Opens Berlin Engineering Hub`, content: `${companyName} opened a 50-person engineering hub in Berlin to serve European customers and comply with GDPR data residency requirements. The company signed 15 enterprise contracts in Europe last quarter and expects European revenue to represent 30% of total by year-end.` },
+    { title: `${companyName} Enters Indian Market with Mumbai Office and Local Partnerships`, content: `${companyName} launched operations in India with a Mumbai office and strategic partnerships with TCS and Infosys. India represents their fastest-growing market with 500+ enterprise customers signed in the first quarter. They plan to hire 100 people locally within 12 months.` },
+  ];
+
+  const partnershipSignals = [
+    { title: `${companyName} Announces Strategic Partnership with Microsoft Azure`, content: `${companyName} signed a strategic partnership with Microsoft Azure to offer native integration within the Azure Marketplace. The partnership includes joint go-to-market initiatives, co-selling opportunities, and deep technical integration that enables one-click deployment for Azure customers.` },
+    { title: `${companyName} Partners with Snowflake for Real-Time Data Integration`, content: `${companyName} announced a deep integration with Snowflake, enabling bi-directional real-time data sync. The partnership addresses a key enterprise requirement and is expected to unlock $50M+ in new pipeline from joint customers who need unified analytics.` },
+  ];
+
+  // Build a mix of signals based on the company name hash
+  // Each company gets a DIFFERENT combination
+  const allPools = [fundingSignals, productSignals, hiringSignals, executiveSignals, expansionSignals, partnershipSignals];
+  const selectedPools = [
+    allPools[Math.abs(hash) % allPools.length],
+    allPools[Math.abs(hash + 1) % allPools.length],
+    allPools[Math.abs(hash + 2) % allPools.length],
+    allPools[Math.abs(hash + 3) % allPools.length],
+    allPools[Math.abs(hash + 4) % allPools.length],
+  ];
+
+  const results: TavilyResult[] = [];
+  const dayOffsets = [3, 5, 8, 12, 18]; // Realistic recency spread
+
+  for (let i = 0; i < 5; i++) {
+    const pool = selectedPools[i];
+    const signal = pool[Math.abs(hash + i * 7) % pool.length];
+    const dayOffset = dayOffsets[i];
+
+    const urlDomains = ["techcrunch.com", "venturebeat.com", "bloomberg.com", "reuters.com", "linkedin.com", "sifted.eu", "inc42.com", "yourstory.com"];
+    const domain = pick(urlDomains, i * 3);
+
+    results.push({
+      title: signal.title,
+      url: `https://${domain}/${companyName.toLowerCase().replace(/\s+/g, "-")}-${pick(["news", "update", "announcement", "report"], i)}`,
+      content: signal.content,
+      published_date: new Date(now.getTime() - dayOffset * 24 * 60 * 60 * 1000).toISOString(),
+    });
+  }
+
+  return results;
 }
 
 // ─── Signal Classification ───
@@ -169,7 +209,7 @@ function determineOverallStrength(signals: Signal[]): SignalStrength {
 // ─── Simulate LinkedIn Activity Score ───
 
 function simulateLinkedInActivity(lead: EnrichedLead): number {
-  // In simulation, generate a score based on seniority and title
+  // In simulation, generate a deterministic score based on seniority, title, and company
   const seniorityScores: Record<string, number> = {
     "C-Level": 75,
     VP: 80,
@@ -178,8 +218,16 @@ function simulateLinkedInActivity(lead: EnrichedLead): number {
     "Individual Contributor": 40,
   };
   const base = seniorityScores[lead.seniority || "Manager"] || 50;
-  // Add some randomness
-  return Math.min(100, Math.max(0, base + Math.floor(Math.random() * 30 - 10)));
+
+  // Deterministic adjustment based on company name (so same company = same score)
+  const hash = (lead.companyName + lead.contactName).split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+  const adjustment = (Math.abs(hash) % 25) - 10; // -10 to +15
+
+  // Title-based bonus: heads/VPs who are more public-facing tend to be more active
+  const title = (lead.contactTitle || "").toLowerCase();
+  const titleBonus = (title.includes("head") || title.includes("vp") || title.includes("founder")) ? 10 : 0;
+
+  return Math.min(100, Math.max(0, base + adjustment + titleBonus));
 }
 
 // ─── Main Agent Function ───
@@ -190,8 +238,8 @@ export async function runSignalScoutAgent(lead: EnrichedLead): Promise<SignalBun
   sseManager.emitAgentStatus(lead.id, AGENT_NUMBER, AGENT_NAME, "running");
 
   try {
-    // Search for company signals
-    const searchQuery = `${lead.companyName} ${lead.industry || "technology"} news funding product launch 2025 2026`;
+    // Search for company signals — use specific, targeted queries
+    const searchQuery = `"${lead.companyName}" ${lead.industry || "technology"} news funding hiring product launch expansion 2025 2026`;
     const tavilyResults = await searchTavily(searchQuery);
 
     // Process and classify each result into a Signal

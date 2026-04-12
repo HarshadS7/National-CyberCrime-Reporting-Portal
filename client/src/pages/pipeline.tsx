@@ -16,7 +16,7 @@ import {
   AgentTile,
   ScoreBar,
 } from "@/components/pipeline/phase-outputs";
-import { StreamingText, GlowingBadge } from "@/components/ui/motion";
+import { StreamingText } from "@/components/ui/motion";
 import SimulateReply from "@/components/simulate-reply";
 import { Button } from "@/components/ui/button";
 import {
@@ -214,62 +214,70 @@ export default function PipelinePage() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* ── Top Bar ── */}
-      <div className="shrink-0 px-5 py-3 border-b border-border/30 flex items-center gap-3 bg-card/20 backdrop-blur-sm">
+      <div className="shrink-0 px-5 py-3 border-b-2 border-black flex items-center gap-3 bg-white">
         <Link to="/dashboard">
-          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs hover:bg-primary/10">
+          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs border-2 border-black shadow-[2px_2px_0_0_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
             <ArrowLeft className="size-3" /> Back
           </Button>
         </Link>
-        <div className="h-4 w-px bg-border/30" />
+        <div className="h-6 w-0.5 bg-black ml-2 mr-2" />
 
         {lead ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
-            <Building2 className="size-4 text-primary" />
-            <span className="text-sm font-semibold">{lead.companyName}</span>
-            <span className="text-muted-foreground/40">·</span>
-            <User className="size-3 text-muted-foreground/60" />
-            <span className="text-xs text-muted-foreground">{lead.contactName}</span>
+            <div className="flex items-center gap-2 border-2 border-black bg-white px-3 py-1 shadow-[2px_2px_0_0_#000]">
+              <Building2 className="size-4 text-black" />
+              <span className="text-sm font-black uppercase">{lead.companyName}</span>
+            </div>
+            {lead.contactName && (
+              <span className="text-xs font-bold text-muted-foreground border border-black px-2 py-0.5">{lead.contactName}</span>
+            )}
           </motion.div>
         ) : loading ? (
-          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Loader2 className="size-3 animate-spin" /> Loading…
+          <span className="flex items-center gap-1.5 text-sm font-bold uppercase">
+            <Loader2 className="size-4 animate-spin" /> Loading…
           </span>
         ) : null}
 
         {/* Pipeline Status */}
         <div className="ml-3">
           {pipelineComplete ? (
-            <GlowingBadge variant="emerald" pulse>
-              <CheckCircle2 className="size-2.5 mr-0.5" /> Complete — {completedCount}/10 Agents
-            </GlowingBadge>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-black uppercase border-2 border-black bg-[#599D77] text-white shadow-[2px_2px_0_0_#000]">
+              <CheckCircle2 className="size-3.5" /> Complete — {completedCount}/10 Agents
+            </span>
           ) : isRunning ? (
-            <GlowingBadge variant="purple" pulse>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-black uppercase border-2 border-black bg-secondary text-black shadow-[2px_2px_0_0_#000]">
+              <span className="relative flex size-2">
+                <span className="animate-ping absolute inline-flex h-full w-full bg-primary opacity-75" />
+                <span className="relative inline-flex size-2 bg-primary" />
+              </span>
               Running — {completedCount}/10
-            </GlowingBadge>
+            </span>
           ) : (
-            <GlowingBadge variant="cyan">Idle</GlowingBadge>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-black uppercase border-2 border-black bg-white text-black shadow-[2px_2px_0_0_#000]">
+              Idle
+            </span>
           )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
           <div
-            className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium border ${
+            className={`flex items-center gap-1.5 border-2 border-black px-2.5 py-1 text-[10px] font-black uppercase shadow-[2px_2px_0_0_#000] ${
               connected
-                ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400"
-                : "border-red-500/30 bg-red-500/5 text-red-400"
+                ? "bg-[#599D77] text-white"
+                : "bg-destructive text-white"
             }`}
           >
-            {connected ? <Wifi className="size-2.5" /> : <WifiOff className="size-2.5" />}
+            {connected ? <Wifi className="size-3" /> : <WifiOff className="size-3" />}
             {connected ? "Live" : "Offline"}
           </div>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { clear(); fetchDetail(); }}>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 border-2 border-black shadow-[2px_2px_0_0_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all" onClick={() => { clear(); fetchDetail(); }}>
             <RefreshCw className="size-3.5" />
           </Button>
         </div>
       </div>
 
       {/* ── Phase Stepper Bar ── */}
-      <div className="shrink-0 px-5 py-2.5 border-b border-border/20 bg-card/10 backdrop-blur-sm">
+      <div className="shrink-0 px-5 py-4 border-b-2 border-black bg-secondary">
         <div className="max-w-4xl mx-auto flex items-center gap-1">
           {PHASES.map((phase, idx) => {
             const st = phaseStatuses[idx];
@@ -278,28 +286,28 @@ export default function PipelinePage() {
               <div key={phase.id} className="flex items-center flex-1 min-w-0">
                 <button
                   onClick={() => { setActivePhase(phase.id); scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 w-full min-w-0 ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md transition-all duration-200 w-full min-w-0 border-2 border-black ${
                     isActive
                       ? st === "running"
-                        ? "bg-purple-500/15 border border-purple-500/30 ring-1 ring-purple-500/20"
+                        ? "bg-[#FFDA5C] shadow-[4px_4px_0_0_#000]"
                         : st === "complete"
-                        ? "bg-emerald-500/10 border border-emerald-500/30 ring-1 ring-emerald-500/20"
-                        : "bg-primary/10 border border-primary/30 ring-1 ring-primary/20"
-                      : "bg-transparent border border-transparent hover:bg-muted/20"
+                        ? "bg-[#599D77] text-white shadow-[2px_2px_0_0_#000]"
+                        : "bg-primary text-white shadow-[2px_2px_0_0_#000]"
+                      : "bg-white shadow-[2px_2px_0_0_#000] hover:shadow-[4px_4px_0_0_#000]"
                   }`}
                 >
                   {/* Step indicator */}
                   <div
-                    className={`size-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold transition-all ${
+                    className={`size-6 rounded-md flex items-center justify-center shrink-0 border-2 border-black text-[10px] font-black transition-all ${
                       st === "complete"
-                        ? "bg-emerald-500/20 text-emerald-400"
+                        ? "bg-white text-[#599D77]"
                         : st === "running"
-                        ? "bg-purple-500/20 text-purple-400"
+                        ? "bg-white text-black"
                         : st === "error"
-                        ? "bg-red-500/20 text-red-400"
+                        ? "bg-white text-destructive"
                         : isActive
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted/30 text-muted-foreground/50"
+                        ? "bg-white text-primary"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {st === "complete" ? (
@@ -311,10 +319,10 @@ export default function PipelinePage() {
                     )}
                   </div>
                   <span
-                    className={`text-[11px] font-medium truncate ${
+                    className={`text-xs font-black uppercase tracking-wider truncate ${
                       isActive
-                        ? st === "running" ? "text-purple-300" : st === "complete" ? "text-emerald-300" : "text-foreground"
-                        : st === "complete" ? "text-emerald-400/70" : "text-muted-foreground/60"
+                        ? st === "running" ? "text-black" : st === "complete" ? "text-white" : "text-white"
+                        : "text-black"
                     }`}
                   >
                     {phase.label}
@@ -322,9 +330,7 @@ export default function PipelinePage() {
                 </button>
                 {/* Connector line */}
                 {idx < PHASES.length - 1 && (
-                  <div className={`w-4 h-px shrink-0 mx-0.5 transition-colors ${
-                    st === "complete" ? "bg-emerald-500/40" : "bg-border/30"
-                  }`} />
+                  <div className={`w-4 h-0.5 shrink-0 mx-1 border-b-2 border-black`} />
                 )}
               </div>
             );
@@ -786,27 +792,27 @@ export default function PipelinePage() {
                 <div className="space-y-2.5">
                   {(o8.results as Array<Record<string, unknown>>).map((result, i) => (
                     <StreamItem key={i} delay={i * 0.15}>
-                      <div className="flex items-center gap-3 rounded-xl border border-border/20 bg-card/20 p-4">
+                      <div className="flex items-center gap-3 border-2 border-black bg-white p-4 shadow-[2px_2px_0_0_#000] mb-2">
                         {/* Status Icon */}
-                        <div className={`size-9 rounded-lg flex items-center justify-center ${
+                        <div className={`size-10 border-2 border-black flex items-center justify-center shadow-[2px_2px_0_0_#000] ${
                           result.status === "sent" || result.status === "simulated"
-                            ? "bg-emerald-500/15"
+                            ? "bg-[#599D77]"
                             : result.status === "queued"
-                            ? "bg-orange-500/15"
-                            : "bg-red-500/15"
+                            ? "bg-[#FFDA5C]"
+                            : "bg-[#EA435F]"
                         }`}>
                           {result.status === "sent" || result.status === "simulated" ? (
-                            <CheckCircle2 className="size-4 text-emerald-400" />
+                            <CheckCircle2 className="size-5 text-white" />
                           ) : result.status === "queued" ? (
-                            <Clock className="size-4 text-orange-400" />
+                            <Clock className="size-5 text-black" />
                           ) : (
-                            <AlertTriangle className="size-4 text-red-400" />
+                            <AlertTriangle className="size-5 text-white" />
                           )}
                         </div>
                         {/* Details */}
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[12px] font-semibold">Touch {result.touch as number || result.touchNumber as number || i + 1}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black uppercase">Touch {result.touch as number || result.touchNumber as number || i + 1}</span>
                             <DataChip variant={result.channel === "linkedin_dm" ? "cyan" : result.channel === "email" ? "purple" : "emerald"}>
                               {((result.channel || "") as string).replace(/_/g, " ")}
                             </DataChip>
@@ -818,13 +824,13 @@ export default function PipelinePage() {
                             </DataChip>
                           </div>
                           {result.messageId && (
-                            <p className="text-[9px] font-mono text-muted-foreground mt-1">
+                            <p className="text-[9px] font-black font-mono text-black mt-1 border border-black inline-block px-1 bg-muted">
                               ID: {result.messageId as string}
                             </p>
                           )}
                         </div>
                         {/* Platform badge */}
-                        <span className="text-[9px] font-mono text-muted-foreground px-2 py-0.5 rounded border border-border/20 bg-muted/10">
+                        <span className="text-[9px] font-black uppercase border-2 border-black px-2 py-0.5 bg-secondary shadow-[1px_1px_0_0_#000]">
                           {result.channel === "linkedin_dm" ? "HeyReach" : result.channel === "email" ? "Resend" : "AiSensy"}
                         </span>
                       </div>
@@ -998,15 +1004,15 @@ export default function PipelinePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="mt-8 rounded-2xl border border-border/30 bg-card/20 backdrop-blur-sm p-6"
+              className="mt-8 border-2 border-black bg-white p-6 shadow-[4px_4px_0_0_#000]"
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="size-10 rounded-xl bg-purple-500/15 flex items-center justify-center">
-                  <MessageSquare className="size-5 text-purple-400" />
+              <div className="flex items-center gap-3 mb-5">
+                <div className="size-12 border-2 border-black bg-secondary flex items-center justify-center shadow-[2px_2px_0_0_#000]">
+                  <MessageSquare className="size-6 text-black" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-semibold">Simulate a Response</h3>
-                  <p className="text-[11px] text-muted-foreground">
+                  <h3 className="text-base font-black uppercase">Simulate a Response</h3>
+                  <p className="text-xs font-semibold text-muted-foreground">
                     Test how Agent 9 classifies sentiment and Agent 10 updates the learning weights
                   </p>
                 </div>
@@ -1021,6 +1027,31 @@ export default function PipelinePage() {
                   setTimeout(fetchDetail, 1500);
                 }}
               />
+            </motion.div>
+          )}
+
+          {/* ═══════ VIEW CALENDAR CTA (on Phase 7 after pipeline complete) ═══════ */}
+          {showSimulate && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="mt-5"
+            >
+              <Link to="/dashboard/calendar">
+                <div className="border-2 border-black bg-[#FFDA5C] p-5 shadow-[4px_4px_0_0_#000] flex items-center gap-4 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] transition-all cursor-pointer group">
+                  <div className="size-12 border-2 border-black bg-white flex items-center justify-center shadow-[2px_2px_0_0_#000]">
+                    <Calendar className="size-6 text-black" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-black uppercase">View Outreach Calendar</h3>
+                    <p className="text-xs font-semibold text-black/70">
+                      See all scheduled touchpoints on a month view · Chat with AI about your schedule
+                    </p>
+                  </div>
+                  <ArrowRight className="size-5 text-black group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
             </motion.div>
           )}
           </motion.div>
@@ -1057,16 +1088,28 @@ export default function PipelinePage() {
                 <ChevronRight className="size-4" />
               </Button>
             ) : pipelineComplete ? (
-              <Link to="/dashboard">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 h-10 px-5 border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400"
-                >
-                  <CheckCircle2 className="size-4" />
-                  <span className="text-sm">Done — Back to Dashboard</span>
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link to="/dashboard/calendar">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 h-10 px-5 border-2 border-black bg-[#FFDA5C] text-black shadow-[2px_2px_0_0_#000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none font-black uppercase text-xs"
+                  >
+                    <Calendar className="size-4" />
+                    <span>Calendar</span>
+                  </Button>
+                </Link>
+                <Link to="/dashboard">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 h-10 px-5 border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400"
+                  >
+                    <CheckCircle2 className="size-4" />
+                    <span className="text-sm">Done</span>
+                  </Button>
+                </Link>
+              </div>
             ) : (
               <Button
                 variant="outline"

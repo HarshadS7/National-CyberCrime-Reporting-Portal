@@ -117,40 +117,83 @@ function simulateApolloEnrichment(
   contactTitle?: string,
   location?: string
 ): ApolloEnrichmentResult {
-  const industries = ["SaaS", "FinTech", "HealthTech", "EdTech", "E-commerce", "DevTools", "AI/ML"];
-  const stages = ["Seed", "Series A", "Series B", "Series C", "Growth", "Public"];
-  const stacks = ["React", "Node.js", "Python", "AWS", "Kubernetes", "PostgreSQL", "Redis", "TypeScript"];
-  const cities = ["Mumbai", "Bangalore", "San Francisco", "New York", "London", "Berlin", "Singapore"];
-
-  const randomPick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-  const stage = randomPick(stages);
-
-  const amounts: Record<string, string> = {
-    Seed: "$2.5M",
-    "Series A": "$12M",
-    "Series B": "$45M",
-    "Series C": "$120M",
-    Growth: "$250M",
-    Public: "N/A",
+  // Known company database for realistic enrichment
+  const knownCompanies: Record<string, { domain: string; size: string; industry: string; stage: string; amount: string; stack: string[]; hq: string }> = {
+    freshworks: { domain: "freshworks.com", size: "1000+", industry: "B2B SaaS - Customer Engagement", stage: "Public", amount: "IPO ($1B+)", stack: ["Ruby on Rails", "React", "AWS", "Redis", "Kafka", "PostgreSQL"], hq: "Chennai, India" },
+    razorpay: { domain: "razorpay.com", size: "1000+", industry: "FinTech - Payments", stage: "Series F", amount: "$741.5M", stack: ["Go", "Ruby", "React", "AWS", "Kubernetes", "MySQL"], hq: "Bangalore, India" },
+    postman: { domain: "postman.com", size: "501-1000", industry: "DevTools - API Platform", stage: "Series D", amount: "$430M", stack: ["Node.js", "React", "Electron", "AWS", "MongoDB", "TypeScript"], hq: "San Francisco, USA" },
+    zerodha: { domain: "zerodha.com", size: "201-500", industry: "FinTech - Trading Platform", stage: "Bootstrapped", amount: "Self-funded ($0 VC)", stack: ["Go", "PostgreSQL", "Redis", "Python", "Elixir", "Kafka"], hq: "Bangalore, India" },
+    notion: { domain: "notion.so", size: "501-1000", industry: "B2B SaaS - Productivity", stage: "Series C", amount: "$343M", stack: ["React", "Node.js", "PostgreSQL", "AWS", "TypeScript", "Redis"], hq: "San Francisco, USA" },
+    chargebee: { domain: "chargebee.com", size: "501-1000", industry: "B2B SaaS - Subscription Billing", stage: "Series G", amount: "$250M", stack: ["Java", "React", "Python", "AWS", "PostgreSQL", "Elasticsearch"], hq: "Chennai, India" },
+    stripe: { domain: "stripe.com", size: "1000+", industry: "FinTech - Payment Infrastructure", stage: "Series I", amount: "$8.7B", stack: ["Ruby", "Go", "React", "AWS", "Kubernetes", "Scala"], hq: "San Francisco, USA" },
+    shopify: { domain: "shopify.com", size: "1000+", industry: "E-commerce - Commerce Platform", stage: "Public", amount: "IPO", stack: ["Ruby on Rails", "React", "GraphQL", "GCP", "Kubernetes", "Lua"], hq: "Ottawa, Canada" },
+    meesho: { domain: "meesho.com", size: "1000+", industry: "E-commerce - Social Commerce", stage: "Series F", amount: "$570M", stack: ["Java", "React Native", "Kubernetes", "AWS", "Kafka", "Redis"], hq: "Bangalore, India" },
+    hasura: { domain: "hasura.io", size: "51-200", industry: "DevTools - GraphQL & Data Access", stage: "Series C", amount: "$100M", stack: ["Haskell", "React", "TypeScript", "PostgreSQL", "Docker", "Go"], hq: "San Francisco, USA" },
+    unacademy: { domain: "unacademy.com", size: "1000+", industry: "EdTech - Online Learning", stage: "Series H", amount: "$440M", stack: ["Python", "React", "AWS", "Kubernetes", "Redis", "MongoDB"], hq: "Bangalore, India" },
+    innovaccer: { domain: "innovaccer.com", size: "501-1000", industry: "HealthTech - Data Platform", stage: "Series E", amount: "$225M", stack: ["Python", "React", "AWS", "Snowflake", "Kubernetes", "PostgreSQL"], hq: "San Francisco, USA" },
+    contentful: { domain: "contentful.com", size: "201-500", industry: "B2B SaaS - Content Platform", stage: "Series F", amount: "$325M", stack: ["Node.js", "React", "TypeScript", "AWS", "PostgreSQL", "Elasticsearch"], hq: "Berlin, Germany" },
   };
+
+  const normalizedName = companyName.toLowerCase().replace(/\s+/g, "");
+  const known = knownCompanies[normalizedName];
+
+  // Use a deterministic hash for consistent results per company name
+  const hash = companyName.split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+  const deterministicPick = <T>(arr: T[]): T => arr[Math.abs(hash) % arr.length];
+
+  const industries = ["B2B SaaS", "FinTech", "HealthTech", "EdTech", "E-commerce", "DevTools", "AI/ML", "Cybersecurity", "MarTech", "HRTech"];
+  const stages = ["Seed", "Series A", "Series B", "Series C", "Series D", "Growth", "Public"];
+  const amounts: Record<string, string> = {
+    Seed: "$2.5M", "Series A": "$12M", "Series B": "$45M", "Series C": "$120M", "Series D": "$200M", Growth: "$350M", Public: "IPO",
+  };
+
+  // Build tech stacks that are coherent (not random)
+  const stackProfiles = [
+    ["React", "Node.js", "TypeScript", "AWS", "PostgreSQL", "Redis"],
+    ["Vue.js", "Python", "Django", "GCP", "MySQL", "Celery"],
+    ["Angular", "Java", "Spring Boot", "Azure", "MongoDB", "Kafka"],
+    ["React", "Go", "gRPC", "AWS", "DynamoDB", "Kubernetes"],
+    ["Next.js", "TypeScript", "Prisma", "Vercel", "PostgreSQL", "Redis"],
+    ["React", "Python", "FastAPI", "AWS", "Snowflake", "Airflow"],
+  ];
+
+  const stage = known?.stage || deterministicPick(stages);
+  const sizeOptions = ["11-50", "51-200", "201-500", "501-1000", "1000+"];
 
   // Infer seniority from provided title
   const inferredSeniority = inferSeniority(contactTitle);
 
+  // Generate a realistic contact name based on company geography
+  const indianFirstNames = ["Rahul", "Priya", "Amit", "Sneha", "Vikram", "Ananya", "Arjun", "Kavitha", "Rohan", "Deepika"];
+  const indianLastNames = ["Sharma", "Patel", "Gupta", "Nair", "Reddy", "Iyer", "Joshi", "Verma", "Bansal", "Srinivasan"];
+  const westernFirstNames = ["James", "Sarah", "Michael", "Emily", "David", "Rachel", "Alex", "Jessica", "Chris", "Amanda"];
+  const westernLastNames = ["Wilson", "Chen", "Martinez", "Kim", "O'Brien", "Anderson", "Thompson", "Lee", "Taylor", "Brown"];
+
+  const hq = known?.hq || location || deterministicPick(["Bangalore, India", "San Francisco, USA", "New York, USA", "London, UK", "Berlin, Germany", "Singapore", "Mumbai, India"]);
+  const isIndian = hq.toLowerCase().includes("india") || hq.toLowerCase().includes("bangalore") || hq.toLowerCase().includes("mumbai") || hq.toLowerCase().includes("chennai");
+
+  const firstNames = isIndian ? indianFirstNames : westernFirstNames;
+  const lastNames = isIndian ? indianLastNames : westernLastNames;
+
+  const generatedContactName = contactName || `${deterministicPick(firstNames)} ${deterministicPick(lastNames)}`;
+  const generatedTitle = contactTitle || deterministicPick(["VP of Engineering", "CTO", "Head of Engineering", "VP of Product", "Director of Engineering", "Head of Platform", "Chief Architect"]);
+  const domain = known?.domain || `${normalizedName}.com`;
+  const emailPrefix = generatedContactName.toLowerCase().replace(/\s+/g, ".");
+
   return {
-    companyDomain: `${companyName.toLowerCase().replace(/\s+/g, "")}.com`,
-    companySize: randomPick(["11-50", "51-200", "201-500", "501-1000"]),
-    industry: randomPick(industries),
+    companyDomain: domain,
+    companySize: known?.size || deterministicPick(sizeOptions),
+    industry: known?.industry || deterministicPick(industries),
     fundingStage: stage,
-    fundingAmount: amounts[stage] || "$10M",
-    techStack: stacks.sort(() => Math.random() - 0.5).slice(0, 4),
-    headquarters: location || randomPick(cities),
-    contactName: contactName || `${randomPick(["Rahul", "Priya", "Amit", "Sarah", "James"])} ${randomPick(["Sharma", "Patel", "Singh", "Chen", "Wilson"])}`,
-    contactTitle: contactTitle || randomPick(["VP Sales", "CTO", "Head of Engineering", "VP Marketing", "Director of Product"]),
-    contactEmail: `${(contactName || "contact").toLowerCase().replace(/\s+/g, ".")}@${companyName.toLowerCase().replace(/\s+/g, "")}.com`,
-    contactPhone: "+91-9876543210",
-    contactLinkedIn: `https://linkedin.com/in/${(contactName || "contact").toLowerCase().replace(/\s+/g, "-")}`,
-    seniority: inferredSeniority || randomPick(["C-Level", "VP", "Director", "Manager"]),
+    fundingAmount: known?.amount || amounts[stage] || "$10M",
+    techStack: known?.stack || deterministicPick(stackProfiles),
+    headquarters: hq,
+    contactName: generatedContactName,
+    contactTitle: generatedTitle,
+    contactEmail: `${emailPrefix}@${domain}`,
+    contactPhone: isIndian ? `+91-${9000000000 + Math.abs(hash) % 999999999}` : `+1-${2000000000 + Math.abs(hash) % 799999999}`,
+    contactLinkedIn: `https://linkedin.com/in/${generatedContactName.toLowerCase().replace(/\s+/g, "-")}`,
+    seniority: inferredSeniority || deterministicPick(["C-Level", "VP", "Director", "Manager"]),
   };
 }
 
@@ -175,34 +218,79 @@ function categorizeSize(employees: number): string {
 
 // ─── Mode 2: Discovery — LLM recommends companies ───
 
+// Define the discovery recommendation type
+interface DiscoveryRecommendation {
+  companyName: string;
+  contactName?: string;
+  contactTitle: string;
+  contactEmail?: string;
+  reason: string;
+  industry?: string;
+  estimatedSize?: string;
+  headquarters?: string;
+}
+
 async function discoverCompanies(
   input: DiscoveryInput
-): Promise<Array<{ companyName: string; contactTitle: string; reason: string }>> {
+): Promise<DiscoveryRecommendation[]> {
   if (config.simulationMode && !config.groqApiKey) {
     return simulateDiscovery(input);
   }
 
-  const systemPrompt = `You are a B2B sales intelligence agent. Given a product description and target criteria, recommend real companies that would be ideal prospects. Return ONLY a JSON array of objects, each with "companyName", "contactTitle" (the ideal person to reach out to), and "reason" (one sentence on why they're a good fit). Return ${input.maxResults || 5} companies.`;
+  const systemPrompt = `You are an elite B2B sales intelligence analyst with deep knowledge of the global technology and business landscape. Given a product description and target criteria, recommend REAL, SPECIFIC companies that exist today and would be ideal prospects.
+
+For EACH company, provide:
+- "companyName": The real, full legal company name (not generic/made-up names)
+- "contactName": A realistic full name for the ideal decision-maker (first + last name)
+- "contactTitle": Their specific job title (e.g. "VP of Engineering", "Head of Data Platform", not just generic "CTO")
+- "contactEmail": A realistic professional email in the format firstname.lastname@companydomain.com or first@companydomain.com
+- "reason": 2-3 sentences explaining WHY this company needs this product — reference specific known facts about the company (their tech stack, recent news, growth stage, pain points, market position)
+- "industry": The specific sub-industry (e.g. "B2B SaaS - Developer Tools" not just "SaaS")
+- "estimatedSize": Employee count range (e.g. "201-500")
+- "headquarters": City, Country
+
+IMPORTANT RULES:
+1. Return ${input.maxResults || 5} companies, each from a DIFFERENT sub-industry or market segment
+2. Mix company sizes: include at least 1 startup (under 50), 1 mid-market (50-500), and 1 enterprise (500+)
+3. Mix geographies: include companies from at least 2 different countries
+4. Each reason must reference SPECIFIC, KNOWN facts about that company
+5. Do NOT return fictional or placeholder companies
+6. Return ONLY the JSON array, no other text.`;
 
   const userMessage = `
-Product: ${input.productName}
-Description: ${input.productDescription}
+Product Name: ${input.productName}
+Product Description: ${input.productDescription}
 Target Industries: ${input.targetIndustries.join(", ")}
-Target Company Size: ${input.targetCompanySize || "Any"}
-Target Geographies: ${input.targetGeographies?.join(", ") || "Global"}
-ICP: ${input.idealCustomerProfile || "Not specified"}
+Target Company Size: ${input.targetCompanySize || "Any size — provide a mix of startup, mid-market, and enterprise"}
+Target Geographies: ${input.targetGeographies?.join(", ") || "Global — include companies from India, US, Europe, and Southeast Asia"}
+Ideal Customer Profile: ${input.idealCustomerProfile || "Companies that are actively growing, have recently raised funding or launched new products, and have a technical team that would benefit from this solution"}
 
-Recommend real, specific companies that would benefit from this product.`;
+Recommend ${input.maxResults || 5} real, specific, currently-operating companies. For each company, identify the most relevant decision-maker by name and title, explain specifically why they would need "${input.productName}", and include their location and industry sub-vertical.`;
 
   try {
     const response = await llmGenerateText(systemPrompt, userMessage);
     const jsonMatch = response.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as Array<{
+      const parsed = JSON.parse(jsonMatch[0]) as Array<{
         companyName: string;
+        contactName?: string;
         contactTitle: string;
+        contactEmail?: string;
         reason: string;
+        industry?: string;
+        estimatedSize?: string;
+        headquarters?: string;
       }>;
+      return parsed.map((p) => ({
+        companyName: p.companyName,
+        contactName: p.contactName,
+        contactTitle: p.contactTitle,
+        contactEmail: p.contactEmail,
+        reason: p.reason,
+        industry: p.industry,
+        estimatedSize: p.estimatedSize,
+        headquarters: p.headquarters,
+      }));
     }
     return simulateDiscovery(input);
   } catch {
@@ -212,15 +300,85 @@ Recommend real, specific companies that would benefit from this product.`;
 
 function simulateDiscovery(
   input: DiscoveryInput
-): Array<{ companyName: string; contactTitle: string; reason: string }> {
-  const companies = [
-    { companyName: "Freshworks", contactTitle: "VP Engineering", reason: `Strong fit — ${input.targetIndustries[0] || "SaaS"} company actively scaling their tech stack` },
-    { companyName: "Razorpay", contactTitle: "Head of Platform", reason: "High-growth FinTech, recently raised Series F, expanding product suite" },
-    { companyName: "Postman", contactTitle: "Director of Product", reason: "DevTools company with strong API-first culture, ideal for technical products" },
-    { companyName: "Zerodha", contactTitle: "CTO", reason: "Tech-forward fintech with lean engineering team, values developer productivity" },
-    { companyName: "Notion", contactTitle: "VP Sales", reason: "Productivity SaaS scaling rapidly, open to tools that improve workflow" },
-  ];
-  return companies.slice(0, input.maxResults || 5);
+): Array<{ companyName: string; contactName?: string; contactTitle: string; contactEmail?: string; reason: string; industry?: string; estimatedSize?: string; headquarters?: string }> {
+  // Build a pool of realistic companies mapped to industries
+  const industryCompanyMap: Record<string, Array<{ companyName: string; contactName: string; contactTitle: string; industry: string; size: string; hq: string; reason: string }>> = {
+    SaaS: [
+      { companyName: "Freshworks", contactName: "Jyoti Bansal", contactTitle: "VP of Engineering", industry: "B2B SaaS - Customer Engagement", size: "1000+", hq: "Chennai, India", reason: "Freshworks is actively expanding their AI-powered CRM suite and recently acquired DevRev. Their 5000+ engineering team needs tools that accelerate product velocity across 13 product lines." },
+      { companyName: "Chargebee", contactName: "Rajaraman Santhanam", contactTitle: "Head of Platform Engineering", industry: "B2B SaaS - Subscription Billing", size: "501-1000", hq: "Chennai, India", reason: "Chargebee is scaling post-Series G ($250M) and migrating to microservices. Their billing platform processes $16B+ in revenue, creating complex infrastructure needs." },
+      { companyName: "Notion", contactName: "Jake Moffatt", contactTitle: "Director of Product Engineering", industry: "B2B SaaS - Productivity", size: "501-1000", hq: "San Francisco, USA", reason: "Notion is rapidly expanding beyond notes into enterprise workflows, databases, and AI. Their 500+ person team is scaling infrastructure to handle 30M+ users." },
+      { companyName: "Contentful", contactName: "Stefan Judis", contactTitle: "VP of Developer Experience", industry: "B2B SaaS - Content Platform", size: "201-500", hq: "Berlin, Germany", reason: "Contentful's headless CMS serves 4000+ enterprise customers. Their move into composable content architecture creates demand for advanced developer tooling." },
+    ],
+    FinTech: [
+      { companyName: "Razorpay", contactName: "Arvind Narayanan", contactTitle: "Head of Platform Architecture", industry: "FinTech - Payments", size: "1000+", hq: "Bangalore, India", reason: "Razorpay processes $90B+ annually and recently launched RazorpayX for business banking. Their engineering team of 800+ needs tools to manage payment reliability at scale." },
+      { companyName: "Stripe", contactName: "Emily Zhang", contactTitle: "Senior Director of Infrastructure", industry: "FinTech - Payment Infrastructure", size: "1000+", hq: "San Francisco, USA", reason: "Stripe powers millions of businesses globally and processes hundreds of billions in payments. Their infrastructure team constantly evaluates tools for developer productivity and reliability." },
+      { companyName: "Zerodha", contactName: "Kailash Nadh", contactTitle: "CTO", industry: "FinTech - Trading Platform", size: "201-500", hq: "Bangalore, India", reason: "Zerodha handles 15M+ daily orders with a lean 50-person engineering team using Go and PostgreSQL. They value developer productivity tools that reduce complexity." },
+      { companyName: "Pine Labs", contactName: "Sanjeev Kumar", contactTitle: "VP of Technology", industry: "FinTech - Merchant Payments", size: "501-1000", hq: "Noida, India", reason: "Pine Labs serves 450K+ merchants and recently merged with Fave. Their tech team is integrating multiple platforms and needs unified development tooling." },
+    ],
+    HealthTech: [
+      { companyName: "Innovaccer", contactName: "Sandeep Gupta", contactTitle: "VP of Engineering", industry: "HealthTech - Data Platform", size: "501-1000", hq: "San Francisco, USA", reason: "Innovaccer's healthcare data platform unifies records for 96M+ lives. Their engineering team is building HIPAA-compliant AI features, requiring robust development infrastructure." },
+      { companyName: "PharmEasy", contactName: "Dharmil Sheth", contactTitle: "Head of Technology", industry: "HealthTech - Digital Pharmacy", size: "1000+", hq: "Mumbai, India", reason: "PharmEasy serves 20M+ customers across India with same-day medicine delivery. Their tech platform handles 500K+ daily orders requiring high-reliability systems." },
+      { companyName: "Tempus AI", contactName: "Ryan Fukushima", contactTitle: "Director of Platform Engineering", industry: "HealthTech - Precision Medicine", size: "1000+", hq: "Chicago, USA", reason: "Tempus processes one of the world's largest clinical and molecular datasets. Their engineering team builds ML pipelines for genomic analysis at massive scale." },
+    ],
+    EdTech: [
+      { companyName: "Unacademy", contactName: "Vivek Sinha", contactTitle: "VP of Engineering", industry: "EdTech - Online Learning", size: "1000+", hq: "Bangalore, India", reason: "Unacademy's live learning platform serves 60M+ learners with real-time video infrastructure. Their engineering team needs tools to manage live-streaming scale and content delivery." },
+      { companyName: "Coursera", contactName: "Shravan Goli", contactTitle: "Director of Engineering", industry: "EdTech - Online Learning Platform", size: "1000+", hq: "Mountain View, USA", reason: "Coursera serves 136M+ learners and 7000+ institutions. Their platform team is investing heavily in AI-powered learning paths and needs scalable infrastructure." },
+    ],
+    DevTools: [
+      { companyName: "Postman", contactName: "Ankit Sobti", contactTitle: "CTO", industry: "DevTools - API Platform", size: "501-1000", hq: "San Francisco, USA", reason: "Postman's API platform is used by 30M+ developers. Their engineering team builds collaboration tools and API testing infrastructure requiring high-quality developer tooling." },
+      { companyName: "Hasura", contactName: "Rajoshi Ghosh", contactTitle: "Head of Product Engineering", industry: "DevTools - GraphQL & Data Access", size: "51-200", hq: "San Francisco, USA", reason: "Hasura powers instant GraphQL APIs for startups and enterprises alike. Their lean but highly technical team values tools that amplify developer productivity." },
+      { companyName: "Zeplin", contactName: "Pelin Kenez", contactTitle: "VP of Engineering", industry: "DevTools - Design-to-Code", size: "51-200", hq: "Istanbul, Turkey", reason: "Zeplin bridges design and development for thousands of product teams. Their engineering team is rebuilding their platform with modern architecture." },
+    ],
+    "E-commerce": [
+      { companyName: "Meesho", contactName: "Sanjeev Barnwal", contactTitle: "CTO & Co-founder", industry: "E-commerce - Social Commerce", size: "1000+", hq: "Bangalore, India", reason: "Meesho serves 150M+ monthly transacting users in India's tier-2/3 cities. Their platform handles millions of daily transactions requiring robust backend infrastructure." },
+      { companyName: "Shopify", contactName: "Allan Leinwand", contactTitle: "VP of Infrastructure Engineering", industry: "E-commerce - Commerce Platform", size: "1000+", hq: "Ottawa, Canada", reason: "Shopify powers 4.6M+ merchants globally. Their engineering team constantly evaluates tools to improve developer productivity across their massive monorepo and distributed systems." },
+    ],
+    "AI/ML": [
+      { companyName: "Hugging Face", contactName: "Julien Chaumond", contactTitle: "CTO & Co-founder", industry: "AI/ML - Model Hub", size: "201-500", hq: "New York, USA", reason: "Hugging Face hosts 500K+ models and is the GitHub of ML. Their infrastructure team is scaling to handle petabytes of model weights and billions of API calls." },
+      { companyName: "Weights & Biases", contactName: "Chris Van Pelt", contactTitle: "CTO & Co-founder", industry: "AI/ML - MLOps", size: "201-500", hq: "San Francisco, USA", reason: "W&B is the leading ML experiment tracking platform. Their engineering team builds infrastructure for tracking millions of ML experiments at enterprise scale." },
+    ],
+  };
+
+  // Match input industries to available pools
+  const matchedCompanies: typeof industryCompanyMap["SaaS"] = [];
+  for (const targetIndustry of input.targetIndustries) {
+    const key = Object.keys(industryCompanyMap).find(
+      (k) => k.toLowerCase().includes(targetIndustry.toLowerCase()) || targetIndustry.toLowerCase().includes(k.toLowerCase())
+    );
+    if (key) {
+      matchedCompanies.push(...industryCompanyMap[key]);
+    }
+  }
+
+  // If no matches, pull from all industries
+  if (matchedCompanies.length === 0) {
+    for (const companies of Object.values(industryCompanyMap)) {
+      matchedCompanies.push(...companies);
+    }
+  }
+
+  // Shuffle and pick diverse results (different industries)
+  const shuffled = matchedCompanies.sort(() => Math.random() - 0.5);
+  const seen = new Set<string>();
+  const results: typeof matchedCompanies = [];
+  for (const company of shuffled) {
+    if (!seen.has(company.industry) || results.length < (input.maxResults || 5)) {
+      seen.add(company.industry);
+      results.push(company);
+    }
+    if (results.length >= (input.maxResults || 5)) break;
+  }
+
+  return results.map((c) => ({
+    companyName: c.companyName,
+    contactName: c.contactName,
+    contactTitle: c.contactTitle,
+    contactEmail: `${c.contactName.toLowerCase().replace(/\s+/g, ".")}@${c.companyName.toLowerCase().replace(/\s+/g, "")}.com`,
+    reason: `${c.reason} This aligns with ${input.productName}'s value proposition in ${input.targetIndustries[0] || "technology"}.`,
+    industry: c.industry,
+    estimatedSize: c.size,
+    headquarters: c.hq,
+  }));
 }
 
 // ─── Deduplication ───
@@ -281,10 +439,17 @@ export async function runLeadIngestionAgent(input: LeadInput): Promise<EnrichedL
       const recommendations = await discoverCompanies(discovery);
 
       for (const rec of recommendations) {
-        const isDuplicate = await checkDuplicate(rec.companyName);
+        const isDuplicate = await checkDuplicate(rec.companyName, rec.contactEmail);
         if (isDuplicate) continue;
 
-        const enrichment = await enrichViaApollo(rec.companyName, undefined, rec.contactTitle);
+        const enrichment = await enrichViaApollo(rec.companyName, rec.contactName, rec.contactTitle, rec.headquarters);
+
+        // Override enrichment with discovery-provided data when available
+        if (rec.contactName) enrichment.contactName = rec.contactName;
+        if (rec.contactEmail) enrichment.contactEmail = rec.contactEmail;
+        if (rec.industry) enrichment.industry = rec.industry;
+        if (rec.estimatedSize) enrichment.companySize = rec.estimatedSize;
+        if (rec.headquarters) enrichment.headquarters = rec.headquarters;
 
         const lead = buildEnrichedLead(enrichment, {
           ...discovery,

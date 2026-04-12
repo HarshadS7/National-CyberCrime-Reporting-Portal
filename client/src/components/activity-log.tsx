@@ -19,75 +19,76 @@ interface Props {
   events: SSEEvent[];
 }
 
+// 4-color palette: black, red (#EA435F), yellow (#FFDA5C), cream (#F9F5F2)
 const EVENT_META: Record<
   string,
-  { icon: React.ReactNode; color: string; label: string; accent: string }
+  { icon: React.ReactNode; bgTag: string; label: string; borderColor: string }
 > = {
   agent_status: {
     icon: <PlayCircle className="size-3.5" />,
-    color: "text-purple-400",
+    bgTag: "bg-secondary text-black",
     label: "AGENT",
-    accent: "border-l-purple-500",
+    borderColor: "border-l-black",
   },
   score_update: {
     icon: <Zap className="size-3.5" />,
-    color: "text-orange-400",
+    bgTag: "bg-primary text-white",
     label: "SCORE",
-    accent: "border-l-orange-500",
+    borderColor: "border-l-primary",
   },
   strategy_update: {
     icon: <Brain className="size-3.5" />,
-    color: "text-blue-400",
+    bgTag: "bg-black text-white",
     label: "STRATEGY",
-    accent: "border-l-blue-500",
+    borderColor: "border-l-black",
   },
   content_update: {
     icon: <MessageSquare className="size-3.5" />,
-    color: "text-teal-400",
+    bgTag: "bg-secondary text-black",
     label: "CONTENT",
-    accent: "border-l-teal-500",
+    borderColor: "border-l-secondary",
   },
   rationale_update: {
     icon: <Brain className="size-3.5" />,
-    color: "text-indigo-400",
+    bgTag: "bg-muted text-black",
     label: "RATIONALE",
-    accent: "border-l-indigo-500",
+    borderColor: "border-l-black",
   },
   delivery_update: {
     icon: <Truck className="size-3.5" />,
-    color: "text-emerald-400",
+    bgTag: "bg-black text-white",
     label: "DELIVERY",
-    accent: "border-l-emerald-500",
+    borderColor: "border-l-black",
   },
   response_update: {
     icon: <MessageSquare className="size-3.5" />,
-    color: "text-yellow-400",
+    bgTag: "bg-secondary text-black",
     label: "RESPONSE",
-    accent: "border-l-yellow-500",
+    borderColor: "border-l-secondary",
   },
   learning_update: {
     icon: <Zap className="size-3.5" />,
-    color: "text-pink-400",
+    bgTag: "bg-primary text-white",
     label: "LEARNING",
-    accent: "border-l-pink-500",
+    borderColor: "border-l-primary",
   },
   branch_decision: {
     icon: <GitBranch className="size-3.5" />,
-    color: "text-cyan-400",
+    bgTag: "bg-muted text-black",
     label: "BRANCH",
-    accent: "border-l-cyan-500",
+    borderColor: "border-l-black",
   },
   pipeline_complete: {
     icon: <CheckCircle2 className="size-3.5" />,
-    color: "text-emerald-400",
+    bgTag: "bg-black text-white",
     label: "COMPLETE",
-    accent: "border-l-emerald-500",
+    borderColor: "border-l-black",
   },
   error: {
     icon: <AlertCircle className="size-3.5" />,
-    color: "text-red-400",
+    bgTag: "bg-primary text-white",
     label: "ERROR",
-    accent: "border-l-red-500",
+    borderColor: "border-l-primary",
   },
 };
 
@@ -155,14 +156,13 @@ export default function ActivityLog({ events }: Props) {
 
   if (!filtered.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8 gap-3">
-        <div className="relative">
-          <Terminal className="size-6 opacity-30" />
-          <Loader2 className="size-3 animate-spin absolute -top-1 -right-1 text-primary" />
+      <div className="flex flex-col items-center justify-center h-full py-8 gap-3">
+        <div className="size-12 border-2 border-black bg-secondary flex items-center justify-center shadow-[2px_2px_0_0_#000]">
+          <Terminal className="size-5 text-black" />
         </div>
         <div className="text-center">
-          <p className="text-xs font-medium">Awaiting agent events…</p>
-          <p className="text-[10px] text-muted-foreground/60 mt-0.5">Real-time feed will appear here</p>
+          <p className="text-xs font-bold uppercase tracking-wider">Awaiting agent events…</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Real-time feed will appear here</p>
         </div>
       </div>
     );
@@ -170,14 +170,14 @@ export default function ActivityLog({ events }: Props) {
 
   return (
     <ScrollArea className="h-full" ref={scrollRef}>
-      <div className="p-2 space-y-0.5">
+      <div className="p-2 space-y-1">
         <AnimatePresence>
           {filtered.map((ev, i) => {
             const meta = EVENT_META[ev.type] || {
               icon: <Zap className="size-3.5" />,
-              color: "text-muted-foreground",
+              bgTag: "bg-muted text-black",
               label: ev.type.toUpperCase(),
-              accent: "border-l-muted",
+              borderColor: "border-l-black",
             };
 
             return (
@@ -185,22 +185,22 @@ export default function ActivityLog({ events }: Props) {
                 key={i}
                 initial={{ opacity: 0, x: -8, height: 0 }}
                 animate={{ opacity: 1, x: 0, height: "auto" }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                className={`flex items-start gap-2.5 px-2.5 py-2 rounded-md border-l-2 bg-card/30 hover:bg-card/50 transition-colors ${meta.accent}`}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className={`flex items-start gap-2.5 px-3 py-2.5 border-2 border-black border-l-4 ${meta.borderColor} bg-white hover:bg-muted/30 transition-colors shadow-[1px_1px_0_0_#000]`}
               >
-                <div className={`mt-0.5 shrink-0 ${meta.color}`}>{meta.icon}</div>
+                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black uppercase border border-black shrink-0 ${meta.bgTag}`}>
+                  {meta.icon}
+                  {meta.label}
+                </span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[9px] font-mono font-bold tracking-wider ${meta.color}`}>
-                      {meta.label}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/50 font-mono">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold text-black leading-snug">
+                      {summarizeEvent(ev)}
+                    </p>
+                    <span className="text-[9px] font-mono text-muted-foreground shrink-0">
                       {formatTime(ev.timestamp)}
                     </span>
                   </div>
-                  <p className="text-[11px] text-foreground/80 mt-0.5 leading-snug font-mono">
-                    {summarizeEvent(ev)}
-                  </p>
                 </div>
               </motion.div>
             );

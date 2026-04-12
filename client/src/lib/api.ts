@@ -71,6 +71,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ enabled }),
     }),
+
+  // ─── Calendar ───
+  getCalendarEvents: () =>
+    request<{ events: import("./types").CalendarEvent[]; count: number }>("/calendar/events"),
+
+  calendarChat: (message: string) =>
+    request<{ reply: string }>("/calendar/chat", {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
 };
 
 // ─── SSE ───

@@ -152,23 +152,38 @@ function generateChannelHeuristics(
 
   if (response.sentiment === "positive") {
     heuristics.push(
-      `✅ ${strategy.primaryChannel} was effective for this lead profile — reinforce channel preference`
+      `✅ ${strategy.primaryChannel} delivered a positive response — this channel is effective for leads in the ${strategy.timezone} timezone`
     );
     if (strategy.toneFramework) {
       heuristics.push(
-        `✅ ${strategy.toneFramework} tone framework generated positive engagement`
+        `✅ "${strategy.toneFramework.replace(/_/g, " ")}" tone framework generated positive engagement — reinforcing as preferred for similar persona types`
+      );
+    }
+    if (strategy.secondaryChannel) {
+      heuristics.push(
+        `📊 ${strategy.secondaryChannel} was designated as backup but wasn't needed — primary channel was sufficient`
       );
     }
   } else if (response.sentiment === "negative") {
     heuristics.push(
-      `⚠️ ${strategy.primaryChannel} led to negative response — consider alternative channels for similar profiles`
+      `⚠️ ${strategy.primaryChannel} led to negative response — consider ${strategy.secondaryChannel || "alternative channels"} as primary for similar lead profiles (${strategy.timezone} timezone, same seniority level)`
     );
     heuristics.push(
-      `⚠️ ${strategy.toneFramework} tone may not be appropriate for this persona type`
+      `⚠️ "${strategy.toneFramework.replace(/_/g, " ")}" tone framework may have been too ${strategy.toneFramework === "growth_urgency" ? "aggressive" : strategy.toneFramework === "challenger" ? "provocative" : "direct"} for this persona — flag for manual review`
+    );
+    heuristics.push(
+      `🔴 Lead marked as do-not-contact — removing from all active cadences and future campaigns`
     );
   } else if (response.sentiment === "no_reply") {
     heuristics.push(
-      `📊 No reply via ${strategy.primaryChannel} — ${strategy.secondaryChannel ? "try " + strategy.secondaryChannel + " as primary next time" : "consider adding a secondary channel"}`
+      `📊 No reply via ${strategy.primaryChannel} after Touch 1 — ${strategy.secondaryChannel ? `recommend switching to ${strategy.secondaryChannel} for Touch 2` : "consider adding a secondary channel (LinkedIn DM or WhatsApp) for multi-channel approach"}`
+    );
+    heuristics.push(
+      `⏰ Cadence timing (${strategy.timezone}, first send: ${strategy.sendTimestamp.slice(0, 10)}) may need adjustment — test sending at different times for this timezone`
+    );
+  } else {
+    heuristics.push(
+      `📊 Neutral response via ${strategy.primaryChannel} — continue cadence with Touch 2 via ${strategy.cadence[1]?.channel || strategy.primaryChannel} as planned`
     );
   }
 
@@ -184,26 +199,42 @@ function generateToneRules(
 ): string[] {
   const rules: string[] = [];
 
+  const toneLabel = strategy.toneFramework.replace(/_/g, " ");
+
   if (response.sentiment === "positive") {
     rules.push(
-      `${persona.archetype} + ${strategy.toneFramework} = effective combination — record as preferred`
+      `📗 ${persona.archetypeLabel} persona + "${toneLabel}" tone = EFFECTIVE — recording as preferred combination (confidence: ${Math.round(persona.confidence * 100)}%)`
+    );
+    rules.push(
+      `📗 Traits that responded well: ${persona.traits.slice(0, 3).join(", ")} — prioritize these in future persona matching`
     );
   } else if (response.sentiment === "negative") {
     rules.push(
-      `${persona.archetype} + ${strategy.toneFramework} = poor combination — avoid in future`
+      `📕 ${persona.archetypeLabel} persona + "${toneLabel}" tone = INEFFECTIVE — flagging this combination to avoid in future`
     );
-    // Suggest alternative tones
-    const alternatives: Record<string, string> = {
-      insight_led: "peer_problem",
-      peer_problem: "relationship_first",
-      challenger: "insight_led",
-      relationship_first: "peer_problem",
-      growth_urgency: "relationship_first",
+    // Suggest alternative tones with reasoning
+    const alternatives: Record<string, { tone: string; reason: string }> = {
+      insight_led: { tone: "peer_problem", reason: "Switch from strategic-level to technical peer-level messaging — may resonate better with this persona" },
+      peer_problem: { tone: "relationship_first", reason: "Technical approach was rejected — try building relationship first before discussing solutions" },
+      challenger: { tone: "insight_led", reason: "Challenger tone was too provocative — dial back to insight-led, data-driven approach" },
+      relationship_first: { tone: "peer_problem", reason: "Relationship approach didn't land — try being more specific about their technical pain points" },
+      growth_urgency: { tone: "relationship_first", reason: "Urgency-based approach felt pushy — switch to low-pressure, relationship-first messaging" },
     };
     const alt = alternatives[strategy.toneFramework];
     if (alt) {
-      rules.push(`Consider "${alt}" for ${persona.archetype} personas instead`);
+      rules.push(`📕 Recommendation: Use "${alt.tone.replace(/_/g, " ")}" for ${persona.archetypeLabel} personas instead — ${alt.reason}`);
     }
+    rules.push(
+      `📕 Messaging to avoid for this persona type: ${persona.avoidInMessaging.join(", ")}`
+    );
+  } else if (response.sentiment === "neutral") {
+    rules.push(
+      `📒 ${persona.archetypeLabel} + "${toneLabel}" = INCONCLUSIVE — maintain current approach for Touch 2 but increase specificity`
+    );
+  } else {
+    rules.push(
+      `📒 No reply with "${toneLabel}" tone for ${persona.archetypeLabel} persona — insufficient data to adjust tone rules. Continue cadence.`
+    );
   }
 
   return rules;

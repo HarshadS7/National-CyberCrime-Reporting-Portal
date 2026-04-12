@@ -516,4 +516,185 @@ api.post("/config/simulation", async (c) => {
   return c.json({ simulationMode: config.simulationMode });
 });
 
+// ═══════════════════════════════════════════════════════════════════
+//  CALENDAR ENDPOINTS
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── Get All Scheduled Outreach Activities ───
+api.get("/calendar/events", async (c) => {
+  try {
+    // Get all leads
+    const allLeads = await leadsCol().find({}).toArray();
+    const events: Array<{
+      id: string;
+      leadId: string;
+      companyName: string;
+      contactName: string;
+      contactTitle: string;
+      channel: string;
+      touchNumber: number;
+      scheduledAt: string;
+      dayOffset: number;
+      toneFramework: string;
+      timezone: string;
+      primaryChannel: string;
+      sentiment?: string;
+      action?: string;
+      tier?: string;
+      compositeScore?: number;
+    }> = [];
+
+    for (const lead of allLeads) {
+      const leadId = lead._id;
+
+      // Get Agent 5 output (strategy with cadence)
+      const agent5Run = await agentRunsCol().findOne({ leadId, agentNumber: 5 });
+      if (!agent5Run?.output) continue;
+
+      let strategy: OutreachStrategy;
+      try {
+        strategy = typeof agent5Run.output === "string"
+          ? JSON.parse(agent5Run.output)
+          : agent5Run.output as unknown as OutreachStrategy;
+      } catch {
+        continue;
+      }
+
+      if (!strategy.cadence || strategy.cadence.length === 0) continue;
+
+      // Get Agent 3 output for score/tier
+      const agent3Run = await agentRunsCol().findOne({ leadId, agentNumber: 3 });
+      let intentData: { compositeScore?: number; tier?: string } = {};
+      if (agent3Run?.output) {
+        try {
+          intentData = typeof agent3Run.output === "string"
+            ? JSON.parse(agent3Run.output)
+            : agent3Run.output as Record<string, unknown>;
+        } catch { /* skip */ }
+      }
+
+      // Get Agent 9 output for response status
+      const agent9Run = await agentRunsCol().findOne({ leadId, agentNumber: 9 });
+      let responseData: { sentiment?: string; action?: string } = {};
+      if (agent9Run?.output) {
+        try {
+          responseData = typeof agent9Run.output === "string"
+            ? JSON.parse(agent9Run.output)
+            : agent9Run.output as Record<string, unknown>;
+        } catch { /* skip */ }
+      }
+
+      for (const tp of strategy.cadence) {
+        events.push({
+          id: `${leadId}-touch-${tp.touchNumber}`,
+          leadId,
+          companyName: lead.companyName as string || "Unknown",
+          contactName: lead.contactName as string || "Unknown",
+          contactTitle: lead.contactTitle as string || "",
+          channel: tp.channel,
+          touchNumber: tp.touchNumber,
+          scheduledAt: tp.scheduledAt,
+          dayOffset: tp.dayOffset,
+          toneFramework: tp.toneFramework,
+          timezone: strategy.timezone || "UTC",
+          primaryChannel: strategy.primaryChannel,
+          sentiment: responseData.sentiment as string | undefined,
+          action: responseData.action as string | undefined,
+          tier: intentData.tier as string | undefined,
+          compositeScore: intentData.compositeScore as number | undefined,
+        });
+      }
+    }
+
+    // Sort by scheduledAt
+    events.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+    return c.json({ events, count: events.length });
+  } catch (error) {
+    console.error("Calendar events error:", error);
+    return c.json({ error: "Failed to fetch calendar events" }, 500);
+  }
+});
+
+// ─── Calendar Chatbot ───
+api.post("/calendar/chat", async (c) => {
+  try {
+    const { message } = await c.req.json<{ message: string }>();
+    if (!message) {
+      return c.json({ error: "message is required" }, 400);
+    }
+
+    // Gather all calendar data for context
+    const allLeads = await leadsCol().find({}).toArray();
+    const scheduleEntries: string[] = [];
+
+    for (const lead of allLeads) {
+      const leadId = lead._id;
+      const agent5Run = await agentRunsCol().findOne({ leadId, agentNumber: 5 });
+      if (!agent5Run?.output) continue;
+
+      let strategy: OutreachStrategy;
+      try {
+        strategy = typeof agent5Run.output === "string"
+          ? JSON.parse(agent5Run.output)
+          : agent5Run.output as unknown as OutreachStrategy;
+      } catch {
+        continue;
+      }
+
+      if (!strategy.cadence || strategy.cadence.length === 0) continue;
+
+      // Get response info
+      const agent9Run = await agentRunsCol().findOne({ leadId, agentNumber: 9 });
+      let sentiment = "pending";
+      if (agent9Run?.output) {
+        try {
+          const resp = typeof agent9Run.output === "string"
+            ? JSON.parse(agent9Run.output)
+            : agent9Run.output;
+          sentiment = (resp as Record<string, string>).sentiment || "pending";
+        } catch { /* skip */ }
+      }
+
+      for (const tp of strategy.cadence) {
+        const dt = new Date(tp.scheduledAt);
+        scheduleEntries.push(
+          `- ${lead.contactName} @ ${lead.companyName} | Touch ${tp.touchNumber} via ${tp.channel.replace(/_/g, " ")} | Scheduled: ${dt.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })} at ${dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} (${strategy.timezone}) | Tone: ${tp.toneFramework.replace(/_/g, " ")} | Response: ${sentiment}`
+        );
+      }
+    }
+
+    const scheduleContext = scheduleEntries.length > 0
+      ? scheduleEntries.join("\n")
+      : "No outreach activities scheduled yet.";
+
+    const today = new Date();
+    const systemPrompt = `You are an AI assistant for the NERVE sales outreach platform. You help users understand and manage their outreach schedule.
+Today is ${today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}.
+
+Here is the current outreach schedule:
+${scheduleContext}
+
+Rules:
+- Answer questions about the schedule clearly and concisely
+- If asked about a specific date, check if there are activities on that day
+- If asked to summarize, provide a brief overview of upcoming activities
+- Use a friendly, professional tone
+- Format channel names nicely (e.g., "LinkedIn DM" not "linkedin_dm")
+- When listing activities, include contact name, company, channel, and time
+- If no activities are found for a query, say so clearly`;
+
+    // Use LLM if available, otherwise provide a basic response
+    const { llmGenerateText } = await import("../lib/llm.js");
+    const reply = await llmGenerateText(systemPrompt, message);
+
+    return c.json({ reply });
+  } catch (error) {
+    console.error("Calendar chat error:", error);
+    return c.json({
+      reply: "I'm having trouble processing your request right now. Please try again in a moment.",
+    });
+  }
+});
+
 export { api };

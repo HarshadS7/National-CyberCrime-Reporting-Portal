@@ -21,24 +21,24 @@ interface PhaseContainerProps {
 
 const statusConfig = {
   idle: {
-    border: "border-border/30",
-    bg: "bg-card/20",
-    glow: "",
+    border: "border-2 border-black",
+    bg: "bg-white",
+    glow: "shadow-[4px_4px_0_0_#000]",
   },
   running: {
-    border: "border-purple-500/40",
-    bg: "bg-purple-500/3",
-    glow: "shadow-[0_0_30px_rgba(168,85,247,0.08)]",
+    border: "border-2 border-black",
+    bg: "bg-[#CEEBFC]",
+    glow: "shadow-[8px_8px_0_0_#000] -translate-y-1",
   },
   complete: {
-    border: "border-emerald-500/30",
-    bg: "bg-emerald-500/2",
-    glow: "shadow-[0_0_20px_rgba(16,185,129,0.06)]",
+    border: "border-2 border-black",
+    bg: "bg-[#F9F5F2]",
+    glow: "shadow-[4px_4px_0_0_#000]",
   },
   error: {
-    border: "border-red-500/30",
-    bg: "bg-red-500/3",
-    glow: "",
+    border: "border-2 border-black",
+    bg: "bg-[#EFD0D5]",
+    glow: "shadow-[4px_4px_0_0_#000]",
   },
 };
 
@@ -60,21 +60,21 @@ export function PhaseContainer({
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className={`rounded-2xl border ${cfg.border} ${cfg.bg} ${cfg.glow} backdrop-blur-sm overflow-hidden transition-all duration-500`}
+        className={`rounded-md border-2 border-black ${cfg.bg} ${cfg.glow} overflow-hidden transition-all duration-500`}
       >
         {/* Phase Header */}
-        <div className="px-6 py-4 border-b border-border/20 flex items-center gap-4">
+        <div className="px-6 py-4 border-b-2 border-black flex items-center gap-4 bg-white">
           {/* Status Icon */}
           <div className="relative">
             <div
-              className={`size-11 rounded-xl flex items-center justify-center transition-all duration-500 ${
+              className={`size-12 rounded-md border-2 border-black flex items-center justify-center transition-all duration-500 shadow-[2px_2px_0_0_#000] ${
                 status === "running"
-                  ? `bg-purple-500/15 ring-2 ring-purple-500/20`
+                  ? `bg-[#FFDA5C]`
                   : status === "complete"
-                  ? `bg-emerald-500/15`
+                  ? `bg-[#599D77]`
                   : status === "error"
-                  ? `bg-red-500/15`
-                  : `bg-muted/30`
+                  ? `bg-[#EA435F]`
+                  : `bg-muted`
               }`}
             >
               {status === "running" ? (
@@ -82,7 +82,7 @@ export function PhaseContainer({
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                 >
-                  <Loader2 className="size-5 text-purple-400" />
+                  <Loader2 className="size-6 text-black" />
                 </motion.div>
               ) : status === "complete" ? (
                 <motion.div
@@ -90,35 +90,27 @@ export function PhaseContainer({
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", bounce: 0.5 }}
                 >
-                  <CheckCircle2 className="size-5 text-emerald-400" />
+                  <CheckCircle2 className="size-6 text-white" />
                 </motion.div>
               ) : (
-                <span className={`text-${accentColor}-400`}>{icon}</span>
+                <span className={`text-black`}>{icon}</span>
               )}
             </div>
-            {/* Pulse ring for running state */}
-            {status === "running" && (
-              <motion.div
-                className="absolute inset-0 rounded-xl border-2 border-purple-400/40"
-                animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0, 0.6] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            )}
           </div>
 
           {/* Title */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5">
-              <h3 className="text-[15px] font-semibold tracking-tight">{title}</h3>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h3 className="text-sm font-black uppercase tracking-tight">{title}</h3>
               {status === "running" && (
                 <motion.span
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 text-purple-400 border border-purple-500/20"
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-black uppercase border-2 border-black bg-[#FFDA5C] text-black shadow-[1px_1px_0_0_#000]"
                 >
                   <span className="relative flex size-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full size-1.5 bg-purple-400" />
+                    <span className="animate-ping absolute inline-flex h-full w-full bg-black opacity-75" />
+                    <span className="relative inline-flex size-1.5 bg-black" />
                   </span>
                   Processing
                 </motion.span>
@@ -127,22 +119,22 @@ export function PhaseContainer({
                 <motion.span
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-black uppercase border-2 border-black bg-[#599D77] text-white shadow-[1px_1px_0_0_#000]"
                 >
                   <CheckCircle2 className="size-2.5" /> Done
                 </motion.span>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
+            <p className="text-[11px] font-semibold text-black/60 mt-0.5">{subtitle}</p>
           </div>
 
           {/* Integration badges */}
           {integrations && integrations.length > 0 && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {integrations.map((int) => (
                 <span
                   key={int}
-                  className="px-2 py-0.5 text-[9px] font-mono font-medium rounded-md border border-border/30 bg-muted/20 text-muted-foreground"
+                  className="px-2 py-0.5 text-[9px] font-black uppercase border-2 border-black bg-white shadow-[1px_1px_0_0_#000]"
                 >
                   {int}
                 </span>

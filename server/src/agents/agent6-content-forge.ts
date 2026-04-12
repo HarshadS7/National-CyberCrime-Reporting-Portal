@@ -176,8 +176,20 @@ function simulateContent(
   lead: EnrichedLead,
   strategy: OutreachStrategy,
   persona: PersonaProfile,
-  intent: IntentScore
+  intent: IntentScore,
+  signals: SignalBundle
 ): GeneratedContent {
+  // Extract signal context for personalization
+  const topSignalRef = signals.topSignal
+    ? `${signals.topSignal.title}`
+    : `${lead.companyName}'s growth in ${lead.industry || "the market"}`;
+  const techRef = lead.techStack?.length
+    ? `your ${lead.techStack.slice(0, 2).join("/")} stack`
+    : "your engineering infrastructure";
+  const fundingRef = lead.fundingStage && lead.fundingAmount
+    ? `${lead.fundingStage} (${lead.fundingAmount})`
+    : lead.fundingStage || "growth stage";
+
   const touches: TouchContent[] = strategy.cadence.map((tp) => {
     const isEmail = tp.channel === "email";
     const isLinkedIn = tp.channel === "linkedin_dm";
@@ -185,32 +197,32 @@ function simulateContent(
     const templates: Record<string, Record<number, { subject?: string; body: string }>> = {
       email: {
         1: {
-          subject: `${lead.companyName}'s ${lead.industry || "growth"} trajectory — quick thought`,
-          body: `Hi ${lead.contactName},\n\nI noticed ${lead.companyName} has been making moves in ${lead.industry || "the industry"} — ${intent.tier === "HOT" ? "particularly impressive" : "interesting to see"} given the current market dynamics.\n\n${persona.archetype === "strategic_executive" ? "From a strategic perspective" : persona.archetype === "practitioner" ? "From a technical standpoint" : "Looking at the bigger picture"}, there's an angle I think could accelerate what your team is building.\n\nWorth a 15-minute conversation this week?\n\nBest,\nAlex from NERVE`,
+          subject: `${topSignalRef} — a thought for ${lead.contactTitle}s`,
+          body: `Hi ${lead.contactName},\n\nI was reading about ${topSignalRef} and it got me thinking about ${lead.companyName}'s trajectory.${lead.companySize ? ` As a ${lead.companySize}-person ${lead.industry || "tech"} company` : ""} at the ${fundingRef} stage, you're likely navigating the challenge of scaling ${persona.archetype === "practitioner" ? techRef : persona.archetype === "strategic_executive" ? "revenue operations" : "your go-to-market motion"} without losing the agility that got you here.\n\n${persona.archetype === "strategic_executive" ? `As ${lead.contactTitle}, you probably see this from the ROI lens — every tool needs to demonstrably move the needle on revenue or efficiency.` : persona.archetype === "practitioner" ? `As ${lead.contactTitle}, you likely care most about whether a solution actually solves the specific pain or just adds another dashboard to ignore.` : persona.archetype === "innovator" ? `As ${lead.contactTitle}, you're probably thinking about how to leapfrog the competition rather than just keeping pace.` : `As ${lead.contactTitle}, I imagine building the right partnerships is key to scaling ${lead.companyName}'s reach.`}\n\nI have a specific angle on this — would it be worth 15 minutes this ${new Date().getDay() <= 2 ? "Thursday" : "Tuesday"}?\n\nBest,\nAlex`,
         },
         2: {
-          subject: `Re: Following up — ${lead.companyName}`,
-          body: `Hi ${lead.contactName},\n\nWanted to share a quick data point: companies similar to ${lead.companyName} in ${lead.industry || "your space"} saw 40% improvement in outreach efficiency after optimizing their approach.\n\nI put together a brief analysis specific to your situation. Happy to walk through it in 10 minutes.\n\nCheers,\nAlex from NERVE`,
+          subject: `Re: Quick data point for ${lead.companyName}`,
+          body: `Hi ${lead.contactName},\n\nFollowing up with something concrete — ${lead.industry || "technology"} companies at the ${fundingRef} stage that optimized their outreach approach saw:\n\n• 40% higher response rates from ${lead.seniority || "senior"}-level decision-makers\n• 3x pipeline velocity in the first quarter\n• 60% reduction in time-to-meeting\n\nI mapped out how this applies specifically to ${lead.companyName}'s ${lead.companySize ? lead.companySize + "-person team" : "team"} — happy to share in a 10-minute walkthrough.\n\n${persona.archetype === "practitioner" ? "No fluff, just the data and a technical demo." : persona.archetype === "strategic_executive" ? "I'll focus strictly on the business impact numbers." : "Happy to keep it casual — just a conversation."}\n\nCheers,\nAlex`,
         },
         3: {
-          subject: `Last note — ${lead.contactName}`,
-          body: `Hi ${lead.contactName},\n\nI'll keep this short — I genuinely think there's mutual value in connecting, but I respect your time.\n\nIf the timing isn't right, no worries at all. If it is, here's my Calendly: calendly.com/nerve-demo\n\nEither way, wishing ${lead.companyName} continued success.\n\nBest,\nAlex from NERVE`,
+          subject: `Closing the loop — ${lead.contactName}`,
+          body: `Hi ${lead.contactName},\n\nLast note from me — I genuinely believe there's a fit between what we're building and where ${lead.companyName} is headed${lead.industry ? ` in ${lead.industry}` : ""}, but I also respect your time.\n\n${persona.archetype === "strategic_executive" ? "If this quarter isn't right, I'd be happy to reconnect when it makes sense strategically." : persona.archetype === "practitioner" ? "If you'd rather see a technical deep-dive first, I can send over documentation instead." : "If the timing isn't ideal, completely understood — the door is always open."}\n\nEither way, here's my calendar if you'd like to chat: calendly.com/nerve-demo\n\nWishing ${lead.companyName} continued momentum.\n\nBest,\nAlex`,
         },
       },
       linkedin_dm: {
-        1: { body: `Hey ${lead.contactName} 👋 Saw ${lead.companyName} is ${intent.tier === "HOT" ? "crushing it" : "making moves"} in ${lead.industry || "the space"}. ${persona.archetype === "strategic_executive" ? "Your leadership approach caught my eye." : "The technical work your team is doing is impressive."} Would love to connect and share a thought.` },
-        2: { body: `Hi ${lead.contactName}, following up — I came across something specific to ${lead.companyName}'s situation that I think you'd find valuable. Mind if I share a quick insight?` },
-        3: { body: `${lead.contactName} — last ping, promise! 😄 Open to a quick 10-min chat this week? If not, totally understand. Here either way.` },
+        1: { body: `Hey ${lead.contactName} 👋 Noticed ${topSignalRef}${lead.companySize ? ` — scaling a ${lead.companySize}-person ${lead.industry || "tech"} team is no joke` : ""}. ${persona.archetype === "strategic_executive" ? `As ${lead.contactTitle}, curious how you're thinking about the ROI on outreach as ${lead.companyName} grows.` : persona.archetype === "practitioner" ? `As a fellow ${lead.industry || "tech"} person, your team's approach with ${techRef} caught my eye.` : `Love what ${lead.companyName} is building.`} Mind if I share a quick insight?` },
+        2: { body: `Hi ${lead.contactName}, quick follow-up — found a data point specific to ${lead.industry || "your space"} at the ${fundingRef} stage that I think ${lead.companyName} would find useful. Worth a 5-min look?` },
+        3: { body: `${lead.contactName} — last ping! 😄 Happy to connect whenever timing is right for ${lead.companyName}. No pressure either way.` },
       },
       whatsapp: {
-        1: { body: `Hi ${lead.contactName}! 👋\n\nQuick one — saw ${lead.companyName}'s recent ${lead.industry || "growth"} moves. Have a relevant insight to share.\n\nOpen to a quick chat?` },
-        2: { body: `Hey ${lead.contactName} 👋\n\nFollowing up — put together a brief analysis for ${lead.companyName}. Worth 5 mins?` },
-        3: { body: `Hi ${lead.contactName} — final note! Open to connecting this week?\n\nNo pressure either way 🙏` },
+        1: { body: `Hi ${lead.contactName}! 👋\n\nSaw ${topSignalRef} — impressive moves at ${lead.companyName}.\n\nHave a ${lead.industry || "market"}-specific insight for ${lead.contactTitle}s.\n\nQuick chat this week?` },
+        2: { body: `Hey ${lead.contactName} 👋\n\nPut together a brief ${lead.industry || "market"} analysis for ${lead.companyName}.\n\n${persona.archetype === "practitioner" ? "Technical deep-dive, no fluff." : "5 mins, pure value."}\n\nWorth a look?` },
+        3: { body: `Hi ${lead.contactName} — final note! 🙏\n\nOpen to connecting whenever works for ${lead.companyName}.\n\nCalendly: calendly.com/nerve-demo` },
       },
     };
 
     const channelKey = tp.channel === "linkedin_dm" ? "linkedin_dm" : tp.channel;
-    const template = templates[channelKey]?.[tp.touchNumber] || { body: `Hi ${lead.contactName}, reaching out regarding ${lead.companyName}.` };
+    const template = templates[channelKey]?.[tp.touchNumber] || { body: `Hi ${lead.contactName}, reaching out regarding ${lead.companyName}'s ${lead.industry || "growth"} trajectory.` };
 
     return {
       touchNumber: tp.touchNumber,
@@ -221,11 +233,28 @@ function simulateContent(
     };
   });
 
+  // Industry-specific LinkedIn post
+  const industryInsights: Record<string, string> = {
+    "FinTech": "Payment infrastructure is becoming a strategic moat, not just plumbing.\n\nThe companies winning in FinTech right now aren't just processing transactions faster — they're turning payment data into predictive intelligence.",
+    "SaaS": "The SaaS growth playbook from 2020 is dead.\n\nProduct-led growth alone isn't enough anymore. The winners are combining PLG with AI-driven outbound that feels hand-crafted.",
+    "HealthTech": "Healthcare's digital transformation isn't coming — it's here.\n\nBut most HealthTech teams are building 2024 solutions for 2026 problems. The gap? Real-time data unification.",
+    "EdTech": "The future of education isn't just online — it's personalized at scale.\n\nThe EdTech companies winning aren't those with the most content. They're the ones with the best learning intelligence.",
+    "DevTools": "Developer experience is the new competitive advantage.\n\nEvery minute a developer spends fighting tooling is a minute they're not shipping value. The DevTools companies understand this.",
+    "AI/ML": "The AI hype cycle is maturing into the AI value cycle.\n\nThe companies that will win aren't those with the biggest models — they're the ones solving specific, painful problems for specific users.",
+  };
+
+  const matchedIndustry = Object.keys(industryInsights).find(
+    (k) => (lead.industry || "").toLowerCase().includes(k.toLowerCase())
+  );
+  const industryHook = matchedIndustry
+    ? industryInsights[matchedIndustry]
+    : `The ${lead.industry || "B2B"} landscape is shifting faster than most teams can adapt.\n\nThe companies pulling ahead aren't just iterating — they're rethinking their entire approach to growth.`;
+
   return {
     leadId: lead.id,
     touches,
-    linkedinPost: `🚀 The ${lead.industry || "B2B"} landscape is shifting.\n\nCompanies that adapt their outreach strategy now will have a 6-month head start.\n\nHere's what I'm seeing:\n\n1. Personalization at scale isn't optional anymore\n2. Multi-channel beats single-channel 3x\n3. AI-driven signals > gut feelings\n\nThe teams winning right now? They're the ones treating outreach as a product, not a task.\n\nWhat's the biggest shift you've seen in how your buyers want to be reached?\n\n#B2B #SalesStrategy #OutreachInnovation`,
-    linkedinHeadlineSuggestion: `Helping ${lead.industry || "B2B"} teams turn cold outreach into warm conversations | AI-Powered Personalization`,
+    linkedinPost: `🚀 ${industryHook}\n\nHere's what I'm seeing across ${lead.industry || "B2B"} companies at the ${fundingRef} stage:\n\n1. Personalization at scale is table stakes, not a differentiator\n2. Multi-channel outreach (${strategy.primaryChannel}${strategy.secondaryChannel ? " + " + strategy.secondaryChannel : ""}) outperforms single-channel by 3x\n3. Signal-driven timing beats scheduled cadences every time\n\nThe teams I see winning? They treat outreach like a product — with iteration, measurement, and user empathy.\n\nWhat's the biggest shift you've seen in how ${lead.industry || "B2B"} buyers want to be reached?\n\n#${(lead.industry || "B2B").replace(/[^a-zA-Z]/g, "")} #SalesStrategy #AI #Outreach`,
+    linkedinHeadlineSuggestion: `Helping ${lead.industry || "B2B"} teams at ${lead.companySize || "growth-stage"} companies turn cold outreach into warm conversations | AI-Powered ${persona.archetype === "practitioner" ? "Technical Sales" : "Revenue Intelligence"}`,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -252,7 +281,7 @@ export async function runContentForgeAgent(
 
     if (isSimulated) {
       // Use rich template-based simulation
-      content = simulateContent(lead, strategy, persona, intent);
+      content = simulateContent(lead, strategy, persona, intent, signals);
     } else {
       // Generate real content with Groq (Llama 3.3 70B)
       const touchPromises = strategy.cadence.map((tp) =>

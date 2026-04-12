@@ -282,18 +282,30 @@ function simulateDelivery(
   channel: OutreachChannel,
   note: string
 ): DeliveryResult {
+  // Generate a realistic-looking message ID per channel
+  const channelPrefixes: Record<string, string> = {
+    email: "resend",
+    linkedin_dm: "heyreach",
+    whatsapp: "aisensy",
+  };
+  const prefix = channelPrefixes[channel] || "sim";
+
   return {
     leadId,
     touchNumber,
     channel,
     status: "simulated",
-    messageId: `sim-${channel}-${nanoid(8)}`,
+    messageId: `${prefix}_${nanoid(12)}`,
     sentAt: new Date().toISOString(),
     simulationMode: true,
     rawApiResponse: {
       note,
+      channel,
+      touchNumber,
       simulatedAt: new Date().toISOString(),
       wouldHaveSent: true,
+      estimatedDeliveryTime: channel === "email" ? "< 30 seconds" : channel === "whatsapp" ? "< 5 seconds" : "Queued for next LinkedIn session window",
+      provider: channel === "email" ? "Resend" : channel === "linkedin_dm" ? "HeyReach" : "AiSensy",
     },
   };
 }

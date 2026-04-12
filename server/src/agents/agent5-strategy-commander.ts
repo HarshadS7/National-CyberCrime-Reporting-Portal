@@ -51,24 +51,24 @@ function selectPrimaryChannel(
     secondary = hasEmail ? "email" : undefined;
     decisions.push({
       decision: "LinkedIn DM as primary channel",
-      reasoning: "Executive persona with active LinkedIn presence — DMs have highest open rates for C-level",
-      factors: ["LinkedIn active (score: " + signals.linkedinActivityScore + ")", "Executive archetype", "Has LinkedIn profile"],
+      reasoning: `${lead.contactName} (${lead.contactTitle}) is a ${persona.archetypeLabel} with active LinkedIn presence (score: ${signals.linkedinActivityScore}/100). LinkedIn DMs have 3x higher open rates for ${lead.seniority || "senior"}-level executives compared to cold email.`,
+      factors: [`LinkedIn activity: ${signals.linkedinActivityScore}/100`, `Persona: ${persona.archetypeLabel}`, `Profile: ${lead.contactLinkedIn || "found"}`, `Email ${hasEmail ? lead.contactEmail : "not available"} as backup`],
     });
   } else if (isIndia && isHot) {
     primary = "whatsapp";
     secondary = hasEmail ? "email" : hasLinkedIn ? "linkedin_dm" : undefined;
     decisions.push({
       decision: "WhatsApp as primary channel",
-      reasoning: "India-based HOT lead — WhatsApp has 95%+ open rates in Indian market",
-      factors: ["India geography", "HOT intent (" + intent.compositeScore + ")", "High urgency"],
+      reasoning: `${lead.contactName} is based in ${lead.headquarters || "India"} and scored ${intent.compositeScore}/100 (HOT). WhatsApp has 95%+ open rates in India — ideal for high-urgency outreach to ${lead.contactTitle}s in the ${lead.industry || "tech"} space.`,
+      factors: [`Location: ${lead.headquarters}`, `Intent score: ${intent.compositeScore}/100 (HOT)`, `Phone: ${lead.contactPhone || "available"}`, `Industry: ${lead.industry || "technology"}`],
     });
   } else if (hasEmail) {
     primary = "email";
     secondary = hasLinkedIn ? "linkedin_dm" : undefined;
     decisions.push({
       decision: "Email as primary channel",
-      reasoning: "Verified email available — email provides rich content delivery and tracking",
-      factors: ["Verified email", hasLinkedIn ? "LinkedIn as backup" : "No LinkedIn available"],
+      reasoning: `${lead.contactEmail} is verified for ${lead.contactName}. Email enables rich content delivery with tracking — ideal for the ${persona.preferredTone} approach needed for ${persona.archetypeLabel} personas at ${lead.companyName}.`,
+      factors: [`Email: ${lead.contactEmail}`, `Persona: ${persona.archetypeLabel}`, hasLinkedIn ? `LinkedIn backup: ${lead.contactLinkedIn}` : "No LinkedIn profile found", `Company: ${lead.companyName} (${lead.companySize || "unknown"} employees)`],
     });
   } else if (hasLinkedIn) {
     primary = "linkedin_dm";

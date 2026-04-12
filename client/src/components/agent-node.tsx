@@ -17,18 +17,19 @@ const AGENT_ICONS: Record<number, string> = {
   6: "✍️", 7: "💡", 8: "📤", 9: "👁️", 10: "🧠",
 };
 
+// 4-color palette: cream bg (#F9F5F2), black, red (#EA435F), yellow (#FFDA5C)
 const STATUS_STYLES: Record<AgentStatus, string> = {
-  idle: "border-border/60 bg-card/60 text-muted-foreground",
-  running: "border-purple-500/60 bg-purple-500/10 text-purple-200 shadow-[0_0_24px_rgba(168,85,247,0.2)]",
-  complete: "border-emerald-500/50 bg-emerald-500/8 text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.12)]",
-  error: "border-red-500/50 bg-red-500/10 text-red-200 shadow-[0_0_20px_rgba(239,68,68,0.15)]",
+  idle: "border-black/30 bg-white text-black",
+  running: "border-black bg-[#FFDA5C] text-black shadow-[3px_3px_0_0_#000]",
+  complete: "border-black bg-[#F9F5F2] text-black shadow-[2px_2px_0_0_#000]",
+  error: "border-black bg-[#EA435F] text-white shadow-[2px_2px_0_0_#000]",
 };
 
 const STATUS_ICON: Record<AgentStatus, React.ReactNode> = {
-  idle: <Circle className="size-3 text-muted-foreground/40" />,
-  running: <Loader2 className="size-3.5 animate-spin text-purple-400" />,
-  complete: <Check className="size-3.5 text-emerald-400" />,
-  error: <AlertCircle className="size-3.5 text-red-400" />,
+  idle: <Circle className="size-3 text-black/30" />,
+  running: <Loader2 className="size-3.5 animate-spin text-black" />,
+  complete: <Check className="size-3.5 text-black" strokeWidth={3} />,
+  error: <AlertCircle className="size-3.5 text-white" />,
 };
 
 function AgentNodeComponent({ data }: NodeProps & { data: AgentNodePayload }) {
@@ -39,56 +40,51 @@ function AgentNodeComponent({ data }: NodeProps & { data: AgentNodePayload }) {
   return (
     <motion.div
       initial={false}
-      animate={isRunning ? { scale: [1, 1.02, 1] } : { scale: 1 }}
-      transition={isRunning ? { repeat: Infinity, duration: 2, ease: "easeInOut" } : {}}
+      animate={isRunning ? { y: [0, -2, 0] } : { y: 0 }}
+      transition={isRunning ? { repeat: Infinity, duration: 1.5, ease: "easeInOut" } : {}}
       className="relative"
     >
-      {/* Outer glow ring for running state */}
-      {isRunning && (
-        <div className="absolute inset-0 -m-1 rounded-xl border-2 border-purple-500/30 animate-pulse" />
-      )}
-
       <div
-        className={`rounded-xl border backdrop-blur-sm px-3.5 py-2.5 min-w-36 transition-all duration-500 ${STATUS_STYLES[d.status]}`}
+        className={`border-2 px-3.5 py-2.5 min-w-36 transition-all duration-300 font-sans ${STATUS_STYLES[d.status]}`}
       >
-        <Handle type="target" position={Position.Left} className="bg-border! size-1.5!" />
+        <Handle type="target" position={Position.Left} className="bg-black! size-2! border-0!" />
 
         {/* Header row */}
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm">{AGENT_ICONS[d.agentNumber] || "🤖"}</span>
-          <span className="text-[10px] font-mono opacity-50">#{d.agentNumber}</span>
+          <span className="text-[9px] font-black font-mono opacity-60">#{d.agentNumber}</span>
           <div className="ml-auto">{STATUS_ICON[d.status]}</div>
         </div>
 
         {/* Agent name */}
-        <p className="text-[11px] font-semibold leading-tight">{d.shortLabel}</p>
+        <p className="text-[11px] font-black uppercase leading-tight tracking-wide">{d.shortLabel}</p>
 
-        {/* Output summary with streaming feel */}
+        {/* Output summary */}
         {d.outputSummary && isComplete && (
           <motion.p
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="text-[9px] mt-1.5 opacity-50 leading-snug line-clamp-2 max-w-36 font-mono"
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="text-[9px] mt-1.5 opacity-60 leading-snug line-clamp-2 max-w-36 font-mono"
           >
             {d.outputSummary}
           </motion.p>
         )}
 
-        {/* Running indicator bar */}
+        {/* Running progress bar */}
         {isRunning && (
-          <div className="mt-2 h-0.5 rounded-full overflow-hidden bg-purple-500/20">
+          <div className="mt-2 h-1 border border-black overflow-hidden bg-white">
             <motion.div
-              className="h-full bg-purple-400/60 rounded-full"
+              className="h-full bg-black"
               initial={{ x: "-100%" }}
               animate={{ x: "100%" }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
               style={{ width: "40%" }}
             />
           </div>
         )}
 
-        <Handle type="source" position={Position.Right} className="bg-border! size-1.5!" />
+        <Handle type="source" position={Position.Right} className="bg-black! size-2! border-0!" />
       </div>
     </motion.div>
   );

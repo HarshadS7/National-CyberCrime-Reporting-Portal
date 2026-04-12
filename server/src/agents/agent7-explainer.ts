@@ -109,7 +109,7 @@ function buildRationale(
   items.push({
     agentName: "Lead Ingestion",
     decision: `Enriched ${lead.companyName} — ${lead.contactName} (${lead.contactTitle})`,
-    explanation: `We pulled data on ${lead.companyName} from Apollo.io and identified ${lead.contactName} as the primary contact. ${lead.companySize ? `The company is ${lead.companySize} employees` : "Company size unknown"}${lead.fundingStage ? `, at ${lead.fundingStage} stage` : ""}${lead.industry ? `, operating in ${lead.industry}` : ""}.`,
+    explanation: `We pulled comprehensive data on ${lead.companyName} (${lead.companyDomain || "domain unknown"}) and identified ${lead.contactName} as the primary contact.${lead.companySize ? ` The company has ${lead.companySize} employees` : ""}${lead.fundingStage ? `, currently at ${lead.fundingStage} stage${lead.fundingAmount ? ` with ${lead.fundingAmount} raised` : ""}` : ""}${lead.industry ? `, operating in ${lead.industry}` : ""}${lead.headquarters ? `, headquartered in ${lead.headquarters}` : ""}.${lead.techStack?.length ? ` Tech stack includes ${lead.techStack.slice(0, 4).join(", ")}${lead.techStack.length > 4 ? ` and ${lead.techStack.length - 4} more` : ""}.` : ""}${lead.contactEmail ? ` Contact email: ${lead.contactEmail}.` : ""}${lead.seniority ? ` Seniority: ${lead.seniority}.` : ""}`,
     confidence: 0.95,
   });
 
@@ -120,16 +120,17 @@ function buildRationale(
       ? `Found ${signals.signals.length} signals — strongest: "${signals.topSignal.title}"`
       : "No strong signals detected",
     explanation: signals.topSignal
-      ? `We scanned the web for recent activity from ${lead.companyName}. The strongest signal is "${signals.topSignal.title}" (${signals.topSignal.strength} strength, ${signals.topSignal.recencyDays} days ago). ${signals.signals.length > 1 ? `We also found ${signals.signals.length - 1} additional signals.` : ""} Their LinkedIn activity score is ${signals.linkedinActivityScore}/100.`
-      : `No significant recent signals found for ${lead.companyName}. LinkedIn activity score is ${signals.linkedinActivityScore}/100.`,
+      ? `We scanned web and social sources for recent activity from ${lead.companyName}. The strongest signal is "${signals.topSignal.title}" (${signals.topSignal.strength} strength, ${signals.topSignal.recencyDays} days ago, source: ${signals.topSignal.source}). ${signals.signals.length > 1 ? `Additional signals include: ${signals.signals.slice(1, 3).map(s => `"${s.title}" (${s.category}, ${s.recencyDays}d ago)`).join("; ")}.` : ""} LinkedIn activity score for ${lead.contactName}: ${signals.linkedinActivityScore}/100${signals.linkedinActivityScore > 60 ? " — actively posting and engaging, suggesting high receptiveness to outreach" : signals.linkedinActivityScore > 40 ? " — moderate activity, reasonable time to reach out" : " — low activity, may be less responsive on LinkedIn"}.`
+      : `No significant recent signals found for ${lead.companyName}. This could mean stable operations or limited public presence. LinkedIn activity score for ${lead.contactName} is ${signals.linkedinActivityScore}/100.`,
     confidence: signals.topSignal ? 0.85 : 0.5,
   });
 
   // Agent 3: Intent Scorer
+  const topDims = intent.dimensions.sort((a, b) => b.weightedScore - a.weightedScore).slice(0, 3);
   items.push({
     agentName: "Intent Scorer",
     decision: `Score: ${intent.compositeScore}/100 — ${intent.tier} lead`,
-    explanation: `Using our 9-dimension weighted scoring model, ${lead.contactName} scored ${intent.compositeScore}/100, placing them in the ${intent.tier} tier. The top scoring factors were: ${intent.topContributors.join(", ")}. ${intent.tier === "HOT" ? "This is a high-priority lead that should be contacted quickly." : intent.tier === "WARM" ? "This lead shows solid potential and is worth pursuing." : intent.tier === "COOL" ? "This lead has some potential but may need more nurturing." : "This lead currently shows low intent — consider nurturing over time."}`,
+    explanation: `Using our 9-dimension weighted scoring model, ${lead.contactName} at ${lead.companyName} scored ${intent.compositeScore}/100, placing them in the ${intent.tier} tier. Top contributing dimensions: ${topDims.map(d => `${d.name} (${d.rawScore}/100 × ${(d.weight * 100).toFixed(0)}% weight = ${d.weightedScore.toFixed(1)} — ${d.reasoning})`).join("; ")}. ${intent.tier === "HOT" ? "This is a high-priority lead — immediate, personalized outreach is recommended." : intent.tier === "WARM" ? "This lead shows solid engagement potential — proactive outreach with a value-first approach is recommended." : intent.tier === "COOL" ? "This lead has moderate potential — a nurture-first approach with educational content is recommended before direct selling." : "This lead currently shows low intent — consider adding to a long-term drip campaign with thought-leadership content."}`,
     confidence: 0.9,
   });
 
@@ -137,25 +138,25 @@ function buildRationale(
   items.push({
     agentName: "Persona Analyst",
     decision: `${persona.archetypeLabel} archetype (${Math.round(persona.confidence * 100)}% confidence)`,
-    explanation: `We classified ${lead.contactName} as a "${persona.archetypeLabel}" based on their title (${lead.contactTitle}), seniority (${lead.seniority || "unknown"}), and industry context. ${persona.reasoning} This means we should use a ${persona.preferredTone} approach and avoid ${persona.avoidInMessaging.slice(0, 2).join(" and ")}.`,
+    explanation: `We classified ${lead.contactName} as a "${persona.archetypeLabel}" based on their title (${lead.contactTitle}), seniority (${lead.seniority || "unknown"}), and the ${lead.industry || "technology"} industry context. ${persona.reasoning} Key traits: ${persona.traits.join(", ")}. Communication style: ${persona.communicationStyle}. We should use a ${persona.preferredTone} approach and avoid ${persona.avoidInMessaging.join(", ")}.`,
     confidence: persona.confidence,
   });
 
   // Agent 5: Strategy Commander
   items.push({
     agentName: "Strategy Commander",
-    decision: `Channel: ${strategy.primaryChannel}${strategy.secondaryChannel ? " + " + strategy.secondaryChannel : ""} | Tone: ${strategy.toneFramework}`,
+    decision: `Channel: ${strategy.primaryChannel}${strategy.secondaryChannel ? " + " + strategy.secondaryChannel : ""} | Tone: ${strategy.toneFramework} | ${strategy.cadence.length}-touch cadence`,
     explanation: strategy.decisions
-      .map((d) => `${d.decision}: ${d.reasoning}`)
-      .join(" "),
+      .map((d) => `${d.decision}: ${d.reasoning} (Factors: ${d.factors.join("; ")})`)
+      .join(" | ") + `. Cadence: ${strategy.cadence.map(c => `Touch ${c.touchNumber} via ${c.channel} on Day +${c.dayOffset}`).join(", ")}. Timezone: ${strategy.timezone}. First send: ${strategy.sendTimestamp}.`,
     confidence: 0.85,
   });
 
   // Agent 6: Content Forge
   items.push({
     agentName: "Content Forge",
-    decision: `Generated ${content.touches.length}-touch cadence${content.linkedinPost ? " + LinkedIn post" : ""}`,
-    explanation: `We crafted ${content.touches.length} personalized messages: ${content.touches.map((t) => `Touch ${t.touchNumber} via ${t.channel}`).join(", ")}. Each message was tailored to the ${persona.archetypeLabel} persona using the ${strategy.toneFramework.replace(/_/g, " ")} framework.${content.linkedinPost ? " A LinkedIn thought-leadership post was also generated to warm up the relationship." : ""}`,
+    decision: `Generated ${content.touches.length}-touch cadence${content.linkedinPost ? " + LinkedIn post" : ""}${content.linkedinHeadlineSuggestion ? " + headline suggestion" : ""}`,
+    explanation: `We crafted ${content.touches.length} hyper-personalized messages for ${lead.contactName}: ${content.touches.map((t) => `Touch ${t.touchNumber} via ${t.channel}${t.subject ? ` (Subject: "${t.subject}")` : ""} — ${t.preview}...`).join("; ")}. Each message was tailored to the ${persona.archetypeLabel} persona using the ${strategy.toneFramework.replace(/_/g, " ")} framework, referencing ${lead.companyName}'s ${lead.industry || "industry"} context and ${signals.topSignal ? `their recent signal: "${signals.topSignal.title}"` : "market position"}.${content.linkedinPost ? " A LinkedIn thought-leadership post was also generated to warm up the relationship before direct outreach." : ""}`,
     confidence: 0.8,
   });
 

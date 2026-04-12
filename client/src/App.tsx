@@ -5,6 +5,7 @@ import DashboardPage from "@/pages/dashboard";
 import NewLeadPage from "@/pages/new-lead";
 import PipelinePage from "@/pages/pipeline";
 import ActivityPage from "@/pages/activity";
+import CalendarPage from "@/pages/calendar";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="new" element={<NewLeadPage />} />
         <Route path="pipeline/:id" element={<PipelinePage />} />
         <Route path="activity" element={<ActivityPage />} />
+        <Route path="calendar" element={<CalendarPage />} />
         <Route path="settings" element={<DashboardPage />} />
       </Route>
     </Routes>

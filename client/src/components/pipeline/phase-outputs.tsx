@@ -8,24 +8,19 @@ export function ThinkingIndicator({ label = "Analyzing…" }: { label?: string }
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex items-center gap-3 py-4"
+      className="flex items-center gap-3 py-4 px-4 border-2 border-black bg-[#FFDA5C] shadow-[2px_2px_0_0_#000]"
     >
       <div className="flex gap-1">
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            className="size-2 rounded-full bg-purple-400"
+            className="size-2.5 bg-black"
             animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
           />
         ))}
       </div>
-      <span className="text-[12px] text-purple-400 font-medium">{label}</span>
-      <motion.div
-        className="h-px flex-1 bg-linear-to-r from-purple-500/20 to-transparent"
-        animate={{ opacity: [0.3, 0.6, 0.3] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      />
+      <span className="text-xs font-black uppercase tracking-wider text-black">{label}</span>
     </motion.div>
   );
 }
@@ -48,11 +43,11 @@ export function OutcomeRow({
     <motion.div
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
-      className="flex items-start gap-3 py-2 border-b border-border/10 last:border-0"
+      className="flex items-start gap-3 py-2 border-b-2 border-black last:border-0"
     >
-      {icon && <span className="mt-0.5 text-muted-foreground/60">{icon}</span>}
-      <span className="text-[11px] text-muted-foreground min-w-25 shrink-0">{label}</span>
-      <span className={`text-[12px] font-medium ${accent} ${mono ? "font-mono" : ""} flex-1`}>
+      {icon && <span className="mt-0.5 text-black">{icon}</span>}
+      <span className="text-[11px] font-black uppercase text-muted-foreground min-w-25 shrink-0">{label}</span>
+      <span className={`text-[12px] font-bold ${accent} ${mono ? "font-mono" : ""} flex-1`}>
         {value}
       </span>
     </motion.div>
@@ -73,11 +68,11 @@ export function OutcomeCard({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl border border-border/20 bg-card/30 backdrop-blur-sm overflow-hidden ${className}`}
+      className={`rounded-md border-2 border-black bg-white shadow-[4px_4px_0_0_#000] overflow-hidden ${className}`}
     >
       {title && (
-        <div className="px-4 py-2.5 border-b border-border/15 bg-muted/10">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="px-4 py-2.5 border-b-2 border-black bg-muted/30">
+          <span className="text-xs font-black uppercase tracking-widest text-black">
             {title}
           </span>
         </div>
@@ -96,17 +91,17 @@ export function DataChip({
   variant?: "default" | "emerald" | "purple" | "cyan" | "orange" | "red";
 }) {
   const variants = {
-    default: "bg-muted/30 text-foreground/80 border-border/20",
-    emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    cyan: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-    orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-    red: "bg-red-500/10 text-red-400 border-red-500/20",
+    default: "bg-white text-black border-2 border-black shadow-[2px_2px_0_0_#000]",
+    emerald: "bg-[#599D77] text-white border-2 border-black shadow-[2px_2px_0_0_#000]",
+    purple: "bg-[#A42439] text-white border-2 border-black shadow-[2px_2px_0_0_#000]",
+    cyan: "bg-[#CEEBFC] text-black border-2 border-black shadow-[2px_2px_0_0_#000]",
+    orange: "bg-[#FFDA5C] text-black border-2 border-black shadow-[2px_2px_0_0_#000]",
+    red: "bg-[#EA435F] text-white border-2 border-black shadow-[2px_2px_0_0_#000]",
   };
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-md border ${variants[variant]}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-black uppercase rounded-sm ${variants[variant]}`}
     >
       {children}
     </span>
@@ -131,12 +126,12 @@ export function MetricTile({
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="rounded-xl border border-border/20 bg-card/20 backdrop-blur-sm p-4 text-center"
+      className="rounded-md border-2 border-black bg-white shadow-[4px_4px_0_0_#000] p-4 text-center transition-all hover:translate-y-[-2px] hover:shadow-[6px_6px_0_0_#000]"
     >
-      {icon && <div className={`text-${accentColor} mb-2 flex justify-center`}>{icon}</div>}
-      <p className="text-xl font-bold font-mono">{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
-      {sub && <p className="text-[10px] font-medium text-emerald-400 mt-1">{sub}</p>}
+      {icon && <div className={`text-black mb-2 flex justify-center`}>{icon}</div>}
+      <p className="text-3xl font-black font-mono tracking-tight text-black">{value}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-1">{label}</p>
+      {sub && <p className="text-[10px] font-bold text-black uppercase mt-1 bg-secondary inline-block px-1 border border-black">{sub}</p>}
     </motion.div>
   );
 }
@@ -174,40 +169,40 @@ export function AgentTile({
 }) {
   return (
     <div
-      className={`rounded-xl border p-4 transition-all duration-500 ${
+      className={`rounded-md border-2 border-black p-4 transition-all duration-500 ${
         status === "running"
-          ? "border-purple-500/30 bg-purple-500/4 shadow-[0_0_20px_rgba(168,85,247,0.06)]"
+          ? "bg-[#FFE75A] shadow-[4px_4px_0_0_#000] -translate-y-1"
           : status === "complete"
-          ? "border-emerald-500/20 bg-emerald-500/2"
-          : "border-border/20 bg-card/10"
+          ? "bg-[#F9F5F2] shadow-[2px_2px_0_0_#000]"
+          : "bg-white shadow-none"
       }`}
     >
-      <div className="flex items-center gap-2.5 mb-3">
+      <div className="flex items-center gap-3 mb-4">
         <span
           className={
             status === "running"
-              ? "text-purple-400"
+              ? "text-black bg-white p-1 border-2 border-black"
               : status === "complete"
-              ? "text-emerald-400"
-              : "text-muted-foreground/60"
+              ? "text-white bg-[#599D77] p-1 border-2 border-black"
+              : "text-muted-foreground/60 p-1"
           }
         >
           {icon}
         </span>
-        <span className="text-[12px] font-semibold">{name}</span>
+        <span className="text-sm font-black uppercase text-black tracking-wide">{name}</span>
         {status === "running" && (
           <motion.div
-            className="ml-auto flex gap-0.5"
+            className="ml-auto flex gap-1"
             animate={{ opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
             {[0, 1, 2].map((i) => (
-              <div key={i} className="size-1 rounded-full bg-purple-400" />
+              <div key={i} className="size-2 rounded-none bg-black border border-black shadow-[1px_1px_0_0_#000]" />
             ))}
           </motion.div>
         )}
         {status === "complete" && (
-          <CheckCircle className="size-3.5 text-emerald-400 ml-auto" />
+          <CheckCircle className="size-5 text-[#599D77] ml-auto border-2 border-black rounded-full bg-white shadow-[2px_2px_0_0_#000]" />
         )}
       </div>
       {children && (
@@ -250,16 +245,16 @@ export function ScoreBar({
 }) {
   const pct = Math.min((value / max) * 100, 100);
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <div className="flex justify-between">
-        <span className="text-[10px] text-muted-foreground">{label}</span>
-        <span className="text-[10px] font-mono text-foreground/80">
+        <span className="text-[10px] font-black uppercase text-black">{label}</span>
+        <span className="text-[10px] font-black font-mono border border-black px-1 bg-muted">
           {value.toFixed(1)}/{max}
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-muted/20 overflow-hidden">
+      <div className="h-3 bg-muted border-2 border-black shadow-[1px_1px_0_0_#000] overflow-hidden">
         <motion.div
-          className={`h-full rounded-full bg-${color}-400`}
+          className="h-full bg-primary"
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.8, ease: "easeOut" }}
