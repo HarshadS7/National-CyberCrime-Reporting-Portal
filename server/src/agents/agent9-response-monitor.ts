@@ -1,9 +1,7 @@
 import { nanoid } from "nanoid";
-import { db } from "../db/index.js";
-import { responseEvents as responseEventsTable, leads } from "../db/schema.js";
+import { responseEventsCol, leadsCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import { llmGenerateText } from "../lib/llm.js";
-import { eq } from "drizzle-orm";
 import type {
   ResponseEvent,
   ResponseSentiment,
@@ -188,30 +186,28 @@ export async function runResponseMonitorAgent(
     };
 
     // Persist to DB
-    db.insert(responseEventsTable)
-      .values({
-        id: nanoid(),
-        leadId,
-        channel,
-        messageBody: messageBody || null,
-        sentiment,
-        classificationReasoning: reasoning,
-        action,
-        receivedAt: responseEvent.receivedAt,
-      })
-      .run();
+    await responseEventsCol().insertOne({
+      _id: nanoid(),
+      leadId,
+      channel,
+      messageBody: messageBody || null,
+      sentiment,
+      classificationReasoning: reasoning,
+      action,
+      receivedAt: responseEvent.receivedAt,
+    });
 
     // Update lead status based on action
     if (action === "cancel_sequence") {
-      db.update(leads)
-        .set({ status: "do_not_contact" })
-        .where(eq(leads.id, leadId))
-        .run();
+      await leadsCol().updateOne(
+        { _id: leadId },
+        { $set: { status: "do_not_contact" } }
+      );
     } else if (action === "escalate_human") {
-      db.update(leads)
-        .set({ status: "active" })
-        .where(eq(leads.id, leadId))
-        .run();
+      await leadsCol().updateOne(
+        { _id: leadId },
+        { $set: { status: "active" } }
+      );
     }
 
     const durationMs = Date.now() - startTime;

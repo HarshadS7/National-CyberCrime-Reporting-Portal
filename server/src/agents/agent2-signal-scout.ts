@@ -1,7 +1,6 @@
 import { nanoid } from "nanoid";
 import { config } from "../config.js";
-import { db } from "../db/index.js";
-import { signals as signalsTable } from "../db/schema.js";
+import { signalsCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import type {
   EnrichedLead,
@@ -225,22 +224,20 @@ export async function runSignalScoutAgent(lead: EnrichedLead): Promise<SignalBun
 
     // Persist signals to DB
     for (const signal of processedSignals) {
-      db.insert(signalsTable)
-        .values({
-          id: signal.id,
-          leadId: lead.id,
-          category: signal.category,
-          title: signal.title,
-          description: signal.description,
-          source: signal.source,
-          sourceUrl: signal.sourceUrl,
-          dateDetected: signal.dateDetected,
-          recencyDays: signal.recencyDays,
-          strength: signal.strength,
-          recencyWeight: signal.recencyWeight,
-          createdAt: new Date().toISOString(),
-        })
-        .run();
+      await signalsCol().insertOne({
+        _id: signal.id,
+        leadId: lead.id,
+        category: signal.category,
+        title: signal.title,
+        description: signal.description,
+        source: signal.source,
+        sourceUrl: signal.sourceUrl,
+        dateDetected: signal.dateDetected,
+        recencyDays: signal.recencyDays,
+        strength: signal.strength,
+        recencyWeight: signal.recencyWeight,
+        createdAt: new Date().toISOString(),
+      });
     }
 
     const durationMs = Date.now() - startTime;

@@ -14,10 +14,14 @@ import {
   simulateNoReply,
   runLearningLoopAgent,
 } from "../agents/index.js";
-import { db } from "../db/index.js";
-import { campaigns, agentRuns, leads, deliveryLogs, responseEvents } from "../db/schema.js";
+import {
+  campaignsCol,
+  agentRunsCol,
+  leadsCol,
+  deliveryLogsCol,
+  responseEventsCol,
+} from "../db/index.js";
 import { config } from "../config.js";
-import { eq } from "drizzle-orm";
 import type {
   TargetedInput,
   DiscoveryInput,
@@ -127,17 +131,28 @@ api.post("/leads/execute", async (c) => {
       additionalContext: body.additionalContext,
     };
 
-    // Run pipeline asynchronously
-    const pipelineId = nanoid();
-    runTargetedPipeline(pipelineId, input).catch((err) => {
+    // Run Agent 1 synchronously so we get the real lead ID
+    const enrichedLeads = await runLeadIngestionAgent(input);
+    if (enrichedLeads.length === 0) {
+      return c.json({ error: "No leads to process (duplicate or not found)" }, 404);
+    }
+    const lead = enrichedLeads[0];
+    const pipelineId = lead.id; // Use the actual lead ID
+
+    console.log(`\n🚀 Pipeline ${pipelineId} started — Targeted: ${input.companyName}`);
+
+    // Continue the rest of the pipeline asynchronously
+    runFullPipeline(pipelineId, lead).catch((err) => {
       console.error("❌ Pipeline error:", err);
-      sseManager.emit("error", "pipeline", { pipelineId, error: String(err) });
+      sseManager.emit("error", lead.id, { pipelineId, error: String(err) });
     });
 
     return c.json({
       pipelineId,
+      leadId: lead.id,
       mode: "targeted",
-      companyName: body.companyName,
+      companyName: lead.companyName,
+      contactName: lead.contactName,
       status: "started",
       message: "Pipeline started — connect to /api/events for real-time updates",
     });
@@ -178,16 +193,36 @@ api.post("/leads/discover", async (c) => {
       maxResults: body.maxResults || 5,
     };
 
-    const pipelineId = nanoid();
-    runDiscoveryPipeline(pipelineId, input).catch((err) => {
+    // Run Agent 1 synchronously so we get real lead IDs
+    const enrichedLeads = await runLeadIngestionAgent(input);
+    if (enrichedLeads.length === 0) {
+      return c.json({ error: "No leads discovered" }, 404);
+    }
+    const pipelineId = enrichedLeads[0].id; // Use first lead's ID
+
+    console.log(`\n🚀 Pipeline ${pipelineId} started — Discovery: ${input.productName}`);
+
+    // Continue the rest of the pipeline asynchronously
+    (async () => {
+      for (const lead of enrichedLeads) {
+        await runFullPipeline(pipelineId, lead);
+      }
+      sseManager.emit("pipeline_complete", "pipeline", {
+        pipelineId,
+        status: "complete",
+        leadsProcessed: enrichedLeads.length,
+      });
+    })().catch((err) => {
       console.error("❌ Pipeline error:", err);
       sseManager.emit("error", "pipeline", { pipelineId, error: String(err) });
     });
 
     return c.json({
       pipelineId,
+      leadId: pipelineId,
       mode: "discovery",
       productName: body.productName,
+      leadsFound: enrichedLeads.length,
       status: "started",
       message: "Discovery pipeline started — connect to /api/events for real-time updates",
     });
@@ -208,92 +243,53 @@ api.post("/leads/discover", async (c) => {
 //    no_reply  → nurture (long-term drip)
 // ═══════════════════════════════════════════════════════════════════
 
-async function runTargetedPipeline(pipelineId: string, input: TargetedInput) {
-  console.log(`\n🚀 Pipeline ${pipelineId} started — Targeted: ${input.companyName}`);
-
-  const enrichedLeads = await runLeadIngestionAgent(input);
-
-  if (enrichedLeads.length === 0) {
-    sseManager.emit("pipeline_complete", "pipeline", {
-      pipelineId,
-      status: "no_leads",
-      message: "No new leads to process (duplicate detected)",
-    });
-    return;
-  }
-
-  const lead = enrichedLeads[0];
-  await runFullPipeline(pipelineId, lead);
-}
-
-async function runDiscoveryPipeline(pipelineId: string, input: DiscoveryInput) {
-  console.log(`\n🚀 Pipeline ${pipelineId} started — Discovery: ${input.productName}`);
-
-  const enrichedLeads = await runLeadIngestionAgent(input);
-
-  if (enrichedLeads.length === 0) {
-    sseManager.emit("pipeline_complete", "pipeline", {
-      pipelineId,
-      status: "no_leads",
-      message: "No leads discovered",
-    });
-    return;
-  }
-
-  const results = [];
-  for (const lead of enrichedLeads) {
-    const result = await runFullPipeline(pipelineId, lead);
-    results.push(result);
-  }
-
-  sseManager.emit("pipeline_complete", "pipeline", {
-    pipelineId,
-    status: "complete",
-    leadsProcessed: results.length,
-  });
-}
+// runTargetedPipeline and runDiscoveryPipeline logic is now inlined
+// in the POST handlers above (Agent 1 runs synchronously to get lead ID).
 
 async function runFullPipeline(pipelineId: string, lead: EnrichedLead) {
   const pipelineStart = Date.now();
 
   // Create campaign record
-  db.insert(campaigns)
-    .values({
-      id: `${pipelineId}-${lead.id}`,
-      leadId: lead.id,
-      mode: lead.source,
-      status: "running",
-      currentAgent: 1,
-      simulationMode: config.simulationMode,
-      startedAt: new Date().toISOString(),
-    })
-    .onConflictDoNothing()
-    .run();
+  await campaignsCol().updateOne(
+    { _id: `${pipelineId}-${lead.id}` },
+    {
+      $setOnInsert: {
+        _id: `${pipelineId}-${lead.id}`,
+        leadId: lead.id,
+        mode: lead.source,
+        status: "running",
+        currentAgent: 1,
+        simulationMode: config.simulationMode,
+        startedAt: new Date().toISOString(),
+      },
+    },
+    { upsert: true }
+  );
 
   // ── Agent 1: Lead Ingestion (already ran) ──
-  logAgentRun(lead.id, 1, "Lead Ingestion", lead);
+  await logAgentRun(lead.id, 1, "Lead Ingestion", lead);
 
   // ── Agent 2: Signal Scout ──
-  updateCampaignAgent(lead.id, 2);
+  await updateCampaignAgent(lead.id, 2);
   const signalBundle = await runSignalScoutAgent(lead);
-  logAgentRun(lead.id, 2, "Signal Scout", signalBundle);
+  await logAgentRun(lead.id, 2, "Signal Scout", signalBundle);
 
   // ── Agents 3 & 4 in parallel ──
-  updateCampaignAgent(lead.id, 3);
+  await updateCampaignAgent(lead.id, 3);
   const [intentScore, personaProfile] = await Promise.all([
     runIntentScorerAgent(lead, signalBundle),
     runPersonaAnalystAgent(lead),
   ]);
-  logAgentRun(lead.id, 3, "Intent Scorer", intentScore);
-  logAgentRun(lead.id, 4, "Persona Analyst", personaProfile);
+  await logAgentRun(lead.id, 3, "Intent Scorer", intentScore);
+  await logAgentRun(lead.id, 4, "Persona Analyst", personaProfile);
 
   // ── Agent 5: Strategy Commander ──
-  updateCampaignAgent(lead.id, 5);
+  await updateCampaignAgent(lead.id, 5);
   const strategy = await runStrategyCommanderAgent(lead, signalBundle, intentScore, personaProfile);
-  logAgentRun(lead.id, 5, "Strategy Commander", strategy);
+  await logAgentRun(lead.id, 5, "Strategy Commander", strategy);
 
   // ── Agents 6 & 7 in parallel ──
-  updateCampaignAgent(lead.id, 6);
+  await updateCampaignAgent(lead.id, 6);
   const [content, rationale] = await Promise.all([
     runContentForgeAgent(lead, signalBundle, intentScore, personaProfile, strategy),
     runExplainerAgent(lead, signalBundle, intentScore, personaProfile, strategy, {
@@ -303,20 +299,18 @@ async function runFullPipeline(pipelineId: string, lead: EnrichedLead) {
       generatedAt: new Date().toISOString(),
     }),
   ]);
-  logAgentRun(lead.id, 6, "Content Forge", content);
-  logAgentRun(lead.id, 7, "Explainer", rationale);
+  await logAgentRun(lead.id, 6, "Content Forge", content);
+  await logAgentRun(lead.id, 7, "Explainer", rationale);
 
   // ── Agent 8: Delivery ──
-  updateCampaignAgent(lead.id, 8);
+  await updateCampaignAgent(lead.id, 8);
   const deliveryResults = await runDeliveryAgent(lead, strategy, content);
-  logAgentRun(lead.id, 8, "Delivery Agent", { results: deliveryResults });
+  await logAgentRun(lead.id, 8, "Delivery Agent", { results: deliveryResults });
 
   // ── Agent 9: Response Monitor ──
-  // In a live system, this waits for webhooks (POST /api/webhook/response).
-  // For the pipeline demo, we simulate a "no_reply" to complete the flow.
-  updateCampaignAgent(lead.id, 9);
+  await updateCampaignAgent(lead.id, 9);
   const responseEvent = await simulateNoReply(lead.id, deliveryResults);
-  logAgentRun(lead.id, 9, "Response Monitor", responseEvent);
+  await logAgentRun(lead.id, 9, "Response Monitor", responseEvent);
 
   // ── Conditional Branch ──
   switch (responseEvent.action) {
@@ -358,25 +352,21 @@ async function runFullPipeline(pipelineId: string, lead: EnrichedLead) {
   }
 
   // ── Agent 10: Learning Loop (runs regardless of outcome) ──
-  updateCampaignAgent(lead.id, 10);
+  await updateCampaignAgent(lead.id, 10);
   const learningResult: LearningResult = await runLearningLoopAgent(
     responseEvent,
     intentScore,
     strategy,
     personaProfile
   );
-  logAgentRun(lead.id, 10, "Learning Loop", learningResult);
+  await logAgentRun(lead.id, 10, "Learning Loop", learningResult);
 
   // Finalize campaign
   const finalStatus = responseEvent.action === "cancel_sequence" ? "cancelled" : "completed";
-  db.update(campaigns)
-    .set({
-      status: finalStatus,
-      currentAgent: 10,
-      completedAt: new Date().toISOString(),
-    })
-    .where(eq(campaigns.leadId, lead.id))
-    .run();
+  await campaignsCol().updateOne(
+    { leadId: lead.id },
+    { $set: { status: finalStatus, currentAgent: 10, completedAt: new Date().toISOString() } }
+  );
 
   const totalMs = Date.now() - pipelineStart;
   console.log(`\n🏁 Pipeline complete for ${lead.contactName} @ ${lead.companyName} in ${totalMs}ms`);
@@ -413,29 +403,26 @@ async function runFullPipeline(pipelineId: string, lead: EnrichedLead) {
 
 // ─── Helpers ───
 
-function logAgentRun(leadId: string, agentNumber: number, agentName: string, output: unknown) {
-  db.insert(agentRuns)
-    .values({
-      id: nanoid(),
-      leadId,
-      agentNumber,
-      agentName,
-      status: "complete",
-      output: JSON.stringify(output),
-      completedAt: new Date().toISOString(),
-    })
-    .run();
+async function logAgentRun(leadId: string, agentNumber: number, agentName: string, output: unknown) {
+  await agentRunsCol().insertOne({
+    _id: nanoid(),
+    leadId,
+    agentNumber,
+    agentName,
+    status: "complete",
+    output: JSON.stringify(output),
+    completedAt: new Date().toISOString(),
+  });
 }
 
-function updateCampaignAgent(leadId: string, agentNumber: number) {
-  db.update(campaigns)
-    .set({ currentAgent: agentNumber })
-    .where(eq(campaigns.leadId, leadId))
-    .run();
+async function updateCampaignAgent(leadId: string, agentNumber: number) {
+  await campaignsCol().updateOne(
+    { leadId },
+    { $set: { currentAgent: agentNumber } }
+  );
 }
 
 // ─── Webhook: Receive Response Events ───
-// External services (email replies, LinkedIn messages, WhatsApp) post here
 api.post("/webhook/response", async (c) => {
   try {
     const body = await c.req.json<{
@@ -449,20 +436,20 @@ api.post("/webhook/response", async (c) => {
     }
 
     // Verify lead exists
-    const lead = db.select().from(leads).where(eq(leads.id, body.leadId)).get();
+    const lead = await leadsCol().findOne({ _id: body.leadId });
     if (!lead) {
       return c.json({ error: "Lead not found" }, 404);
     }
 
     // Run Agent 9 (Response Monitor) with real message
     const responseEvent = await runResponseMonitorAgent(body.leadId, body.channel, body.messageBody);
-    logAgentRun(body.leadId, 9, "Response Monitor", responseEvent);
+    await logAgentRun(body.leadId, 9, "Response Monitor", responseEvent);
 
     // Retrieve prior agent outputs for Agent 10
-    const agentRunsData = db.select().from(agentRuns).where(eq(agentRuns.leadId, body.leadId)).all();
-    const agent3Output = agentRunsData.find((r) => r.agentNumber === 3);
-    const agent4Output = agentRunsData.find((r) => r.agentNumber === 4);
-    const agent5Output = agentRunsData.find((r) => r.agentNumber === 5);
+    const agentRunsData = await agentRunsCol().find({ leadId: body.leadId }).toArray();
+    const agent3Output = agentRunsData.find((r: any) => r.agentNumber === 3);
+    const agent4Output = agentRunsData.find((r: any) => r.agentNumber === 4);
+    const agent5Output = agentRunsData.find((r: any) => r.agentNumber === 5);
 
     if (agent3Output?.output && agent4Output?.output && agent5Output?.output) {
       const intent = JSON.parse(agent3Output.output) as IntentScore;
@@ -471,7 +458,7 @@ api.post("/webhook/response", async (c) => {
 
       // Run Agent 10 (Learning Loop)
       const learning = await runLearningLoopAgent(responseEvent, intent, strategy, persona);
-      logAgentRun(body.leadId, 10, "Learning Loop", learning);
+      await logAgentRun(body.leadId, 10, "Learning Loop", learning);
     }
 
     return c.json({
@@ -489,21 +476,21 @@ api.post("/webhook/response", async (c) => {
 api.get("/leads/:id", async (c) => {
   const leadId = c.req.param("id");
 
-  const lead = db.select().from(leads).where(eq(leads.id, leadId)).get();
+  const lead = await leadsCol().findOne({ _id: leadId });
   if (!lead) {
     return c.json({ error: "Lead not found" }, 404);
   }
 
-  const runs = db.select().from(agentRuns).where(eq(agentRuns.leadId, leadId)).all();
-  const deliveries = db.select().from(deliveryLogs).where(eq(deliveryLogs.leadId, leadId)).all();
-  const responses = db.select().from(responseEvents).where(eq(responseEvents.leadId, leadId)).all();
+  const runs = await agentRunsCol().find({ leadId }).toArray();
+  const deliveries = await deliveryLogsCol().find({ leadId }).toArray();
+  const responses = await responseEventsCol().find({ leadId }).toArray();
 
   // Parse agent outputs
   const agentOutputs: Record<number, unknown> = {};
   for (const run of runs) {
     if (run.output) {
       try {
-        agentOutputs[run.agentNumber] = JSON.parse(run.output);
+        agentOutputs[run.agentNumber] = JSON.parse(run.output as string);
       } catch {
         agentOutputs[run.agentNumber] = run.output;
       }
@@ -511,24 +498,24 @@ api.get("/leads/:id", async (c) => {
   }
 
   return c.json({
-    lead,
-    agentRuns: runs,
+    lead: { ...lead, id: lead._id },
+    agentRuns: runs.map((r: any) => ({ ...r, id: r._id })),
     agentOutputs,
-    deliveries,
-    responses,
+    deliveries: deliveries.map((d: any) => ({ ...d, id: d._id })),
+    responses: responses.map((r: any) => ({ ...r, id: r._id })),
   });
 });
 
 // ─── Get All Leads ───
 api.get("/leads", async (c) => {
-  const allLeads = db.select().from(leads).all();
-  return c.json({ leads: allLeads, count: allLeads.length });
+  const allLeads = await leadsCol().find({}).toArray();
+  const mapped = allLeads.map((l: any) => ({ ...l, id: l._id }));
+  return c.json({ leads: mapped, count: mapped.length });
 });
 
 // ─── Simulation Mode Toggle ───
 api.post("/config/simulation", async (c) => {
   const { enabled } = await c.req.json<{ enabled: boolean }>();
-  // Note: This only changes runtime config, not the .env file
   (config as { simulationMode: boolean }).simulationMode = enabled;
   return c.json({ simulationMode: config.simulationMode });
 });

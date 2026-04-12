@@ -1,7 +1,6 @@
 import { nanoid } from "nanoid";
 import { config } from "../config.js";
-import { db } from "../db/index.js";
-import { deliveryLogs } from "../db/schema.js";
+import { deliveryLogsCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import type {
   EnrichedLead,
@@ -357,19 +356,17 @@ export async function runDeliveryAgent(
       }
 
       // Persist to DB
-      db.insert(deliveryLogs)
-        .values({
-          id: nanoid(),
-          leadId: lead.id,
-          touchNumber: result.touchNumber,
-          channel: result.channel,
-          status: result.status,
-          messageId: result.messageId || null,
-          sentAt: result.sentAt,
-          simulationMode: result.simulationMode,
-          rawResponse: JSON.stringify(result.rawApiResponse),
-        })
-        .run();
+      await deliveryLogsCol().insertOne({
+        _id: nanoid(),
+        leadId: lead.id,
+        touchNumber: result.touchNumber,
+        channel: result.channel,
+        status: result.status,
+        messageId: result.messageId || null,
+        sentAt: result.sentAt,
+        simulationMode: result.simulationMode,
+        rawResponse: JSON.stringify(result.rawApiResponse),
+      });
 
       results.push(result);
 

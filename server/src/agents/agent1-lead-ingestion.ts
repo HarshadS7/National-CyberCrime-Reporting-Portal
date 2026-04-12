@@ -1,10 +1,8 @@
 import { nanoid } from "nanoid";
 import { config } from "../config.js";
-import { db } from "../db/index.js";
-import { leads } from "../db/schema.js";
+import { leadsCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import { llmGenerateText } from "../lib/llm.js";
-import { eq } from "drizzle-orm";
 import type {
   TargetedInput,
   DiscoveryInput,
@@ -211,11 +209,7 @@ function simulateDiscovery(
 // ─── Deduplication ───
 
 async function checkDuplicate(companyName: string, contactEmail?: string): Promise<boolean> {
-  const existing = db
-    .select()
-    .from(leads)
-    .where(eq(leads.companyName, companyName))
-    .all();
+  const existing = await leadsCol().find({ companyName }).toArray();
 
   if (existing.length === 0) return false;
 
@@ -288,30 +282,28 @@ export async function runLeadIngestionAgent(input: LeadInput): Promise<EnrichedL
 
     // Persist all enriched leads to DB
     for (const lead of enrichedLeads) {
-      db.insert(leads)
-        .values({
-          id: lead.id,
-          companyName: lead.companyName,
-          companyDomain: lead.companyDomain,
-          companySize: lead.companySize,
-          industry: lead.industry,
-          fundingStage: lead.fundingStage,
-          fundingAmount: lead.fundingAmount,
-          techStack: JSON.stringify(lead.techStack),
-          headquarters: lead.headquarters,
-          contactName: lead.contactName,
-          contactTitle: lead.contactTitle,
-          contactEmail: lead.contactEmail,
-          contactPhone: lead.contactPhone,
-          contactLinkedIn: lead.contactLinkedIn,
-          seniority: lead.seniority,
-          source: lead.source,
-          status: "processing",
-          rawInput: JSON.stringify(lead.rawInput),
-          enrichedAt: lead.enrichedAt,
-          createdAt: new Date().toISOString(),
-        })
-        .run();
+      await leadsCol().insertOne({
+        _id: lead.id,
+        companyName: lead.companyName,
+        companyDomain: lead.companyDomain,
+        companySize: lead.companySize,
+        industry: lead.industry,
+        fundingStage: lead.fundingStage,
+        fundingAmount: lead.fundingAmount,
+        techStack: JSON.stringify(lead.techStack),
+        headquarters: lead.headquarters,
+        contactName: lead.contactName,
+        contactTitle: lead.contactTitle,
+        contactEmail: lead.contactEmail,
+        contactPhone: lead.contactPhone,
+        contactLinkedIn: lead.contactLinkedIn,
+        seniority: lead.seniority,
+        source: lead.source,
+        status: "processing",
+        rawInput: JSON.stringify(lead.rawInput),
+        enrichedAt: lead.enrichedAt,
+        createdAt: new Date().toISOString(),
+      });
     }
 
     const durationMs = Date.now() - startTime;

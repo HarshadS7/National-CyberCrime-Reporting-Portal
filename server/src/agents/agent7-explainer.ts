@@ -1,9 +1,7 @@
 import { nanoid } from "nanoid";
-import { db } from "../db/index.js";
-import { agentRuns } from "../db/schema.js";
+import { agentRunsCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import { llmGenerateText } from "../lib/llm.js";
-import { eq, and } from "drizzle-orm";
 import type {
   EnrichedLead,
   SignalBundle,
@@ -23,13 +21,9 @@ const AGENT_NAME = "Explainer";
 
 // ─── Agent Graph Builder (for React Flow frontend) ───
 
-function buildAgentGraph(leadId: string): AgentGraphData {
+async function buildAgentGraph(leadId: string): Promise<AgentGraphData> {
   // Query all agent runs for this lead
-  const runs = db
-    .select()
-    .from(agentRuns)
-    .where(eq(agentRuns.leadId, leadId))
-    .all();
+  const runs = await agentRunsCol().find({ leadId }).toArray();
 
   const runMap = new Map(runs.map((r) => [r.agentNumber, r]));
 
@@ -215,7 +209,7 @@ export async function runExplainerAgent(
     const explanations = buildRationale(lead, signals, intent, persona, strategy, content);
 
     // Build agent graph data
-    const graphData = buildAgentGraph(lead.id);
+    const graphData = await buildAgentGraph(lead.id);
 
     // Generate executive summary
     const summary = await generateSummary(lead, explanations, intent, strategy);

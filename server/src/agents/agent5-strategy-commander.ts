@@ -1,6 +1,5 @@
 import { nanoid } from "nanoid";
-import { db } from "../db/index.js";
-import { strategies } from "../db/schema.js";
+import { strategiesCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import type {
   EnrichedLead,
@@ -273,20 +272,18 @@ export async function runStrategyCommanderAgent(
     };
 
     // Persist to DB
-    db.insert(strategies)
-      .values({
-        id: nanoid(),
-        leadId: lead.id,
-        primaryChannel: strategy.primaryChannel,
-        secondaryChannel: strategy.secondaryChannel,
-        sendTimestamp: strategy.sendTimestamp,
-        timezone: strategy.timezone,
-        toneFramework: strategy.toneFramework,
-        cadence: JSON.stringify(strategy.cadence),
-        decisions: JSON.stringify(strategy.decisions),
-        generatedAt: strategy.generatedAt,
-      })
-      .run();
+    await strategiesCol().insertOne({
+      _id: nanoid(),
+      leadId: lead.id,
+      primaryChannel: strategy.primaryChannel,
+      secondaryChannel: strategy.secondaryChannel,
+      sendTimestamp: strategy.sendTimestamp,
+      timezone: strategy.timezone,
+      toneFramework: strategy.toneFramework,
+      cadence: JSON.stringify(strategy.cadence),
+      decisions: JSON.stringify(strategy.decisions),
+      generatedAt: strategy.generatedAt,
+    });
 
     const durationMs = Date.now() - startTime;
     const summary = `${primary}${secondary ? " + " + secondary : ""} | ${tone} | ${cadence.length}-touch over ${cadence[cadence.length - 1].dayOffset}d`;

@@ -42,6 +42,10 @@ export const config = {
   // Mode
   simulationMode: process.env.SIMULATION_MODE === "true",
 
+  // MongoDB
+  mongoUri: process.env.MONGO_URI || "mongodb://localhost:27017",
+  mongoDbName: process.env.MONGO_DB_NAME || "nerve",
+
   // LLM
   geminiApiKey: process.env.GEMINI_API_KEY || "",
 

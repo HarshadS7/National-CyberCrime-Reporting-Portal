@@ -1,7 +1,6 @@
 import { nanoid } from "nanoid";
 import { config } from "../config.js";
-import { db } from "../db/index.js";
-import { personaProfiles } from "../db/schema.js";
+import { personaProfilesCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import { llmGenerateText } from "../lib/llm.js";
 import type {
@@ -194,21 +193,19 @@ export async function runPersonaAnalystAgent(lead: EnrichedLead): Promise<Person
     }
 
     // Persist to DB
-    db.insert(personaProfiles)
-      .values({
-        id: nanoid(),
-        leadId: lead.id,
-        archetype: profile.archetype,
-        archetypeLabel: profile.archetypeLabel,
-        confidence: profile.confidence,
-        traits: JSON.stringify(profile.traits),
-        communicationStyle: profile.communicationStyle,
-        preferredTone: profile.preferredTone,
-        avoidInMessaging: JSON.stringify(profile.avoidInMessaging),
-        reasoning: profile.reasoning,
-        generatedAt: profile.generatedAt,
-      })
-      .run();
+    await personaProfilesCol().insertOne({
+      _id: nanoid(),
+      leadId: lead.id,
+      archetype: profile.archetype,
+      archetypeLabel: profile.archetypeLabel,
+      confidence: profile.confidence,
+      traits: JSON.stringify(profile.traits),
+      communicationStyle: profile.communicationStyle,
+      preferredTone: profile.preferredTone,
+      avoidInMessaging: JSON.stringify(profile.avoidInMessaging),
+      reasoning: profile.reasoning,
+      generatedAt: profile.generatedAt,
+    });
 
     const durationMs = Date.now() - startTime;
     const summary = `Archetype: ${profile.archetypeLabel} (${Math.round(profile.confidence * 100)}% confidence) — Tone: ${profile.preferredTone.slice(0, 50)}`;

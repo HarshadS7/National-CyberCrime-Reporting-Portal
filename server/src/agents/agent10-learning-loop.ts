@@ -1,11 +1,6 @@
 import { nanoid } from "nanoid";
-import { db } from "../db/index.js";
-import {
-  scoringWeights as weightsTable,
-  learningHistory,
-} from "../db/schema.js";
+import { scoringWeightsCol, learningHistoryCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
-import { eq } from "drizzle-orm";
 import type {
   ResponseEvent,
   IntentScore,
@@ -61,19 +56,19 @@ const ADJUSTMENT_RULES: AdjustmentRule[] = [
 
 // ─── Weight Update Logic ───
 
-function calculateWeightUpdates(
+async function calculateWeightUpdates(
   response: ResponseEvent,
   intent: IntentScore,
   strategy: OutreachStrategy,
   persona: PersonaProfile
-): WeightUpdate[] {
+): Promise<WeightUpdate[]> {
   const rule = ADJUSTMENT_RULES.find((r) => r.sentiment === response.sentiment);
   if (!rule) return [];
 
   const updates: WeightUpdate[] = [];
 
   // Get current weights from DB
-  const currentWeights = db.select().from(weightsTable).all();
+  const currentWeights = await scoringWeightsCol().find({}).toArray();
   const weightMap = new Map(currentWeights.map((w) => [w.dimension, w.weight]));
 
   // Map dimension names to DB keys
@@ -216,19 +211,21 @@ function generateToneRules(
 
 // ─── Apply Weight Updates to DB ───
 
-function applyWeightUpdates(updates: WeightUpdate[]): void {
+async function applyWeightUpdates(updates: WeightUpdate[]): Promise<void> {
   const now = new Date().toISOString();
 
   for (const update of updates) {
-    db.update(weightsTable)
-      .set({
-        weight: update.newWeight,
-        previousWeight: update.previousWeight,
-        updatedAt: now,
-        updatedBy: "agent_10",
-      })
-      .where(eq(weightsTable.dimension, update.dimension))
-      .run();
+    await scoringWeightsCol().updateOne(
+      { dimension: update.dimension },
+      {
+        $set: {
+          weight: update.newWeight,
+          previousWeight: update.previousWeight,
+          updatedAt: now,
+          updatedBy: "agent_10",
+        },
+      }
+    );
   }
 }
 
@@ -246,7 +243,7 @@ export async function runLearningLoopAgent(
 
   try {
     // 1. Calculate weight adjustments
-    const weightUpdates = calculateWeightUpdates(response, intent, strategy, persona);
+    const weightUpdates = await calculateWeightUpdates(response, intent, strategy, persona);
 
     // 2. Generate channel heuristic updates
     const heuristicUpdates = generateChannelHeuristics(response, strategy);
@@ -256,7 +253,7 @@ export async function runLearningLoopAgent(
 
     // 4. Apply weight updates to DB
     if (weightUpdates.length > 0) {
-      applyWeightUpdates(weightUpdates);
+      await applyWeightUpdates(weightUpdates);
     }
 
     const result: LearningResult = {
@@ -268,16 +265,14 @@ export async function runLearningLoopAgent(
     };
 
     // 5. Persist learning history
-    db.insert(learningHistory)
-      .values({
-        id: nanoid(),
-        leadId: response.leadId,
-        weightUpdates: JSON.stringify(weightUpdates),
-        heuristicUpdates: JSON.stringify(heuristicUpdates),
-        toneRuleUpdates: JSON.stringify(toneRuleUpdates),
-        updatedAt: result.updatedAt,
-      })
-      .run();
+    await learningHistoryCol().insertOne({
+      _id: nanoid(),
+      leadId: response.leadId,
+      weightUpdates: JSON.stringify(weightUpdates),
+      heuristicUpdates: JSON.stringify(heuristicUpdates),
+      toneRuleUpdates: JSON.stringify(toneRuleUpdates),
+      updatedAt: result.updatedAt,
+    });
 
     const durationMs = Date.now() - startTime;
     const summary = `${weightUpdates.length} weight updates | ${heuristicUpdates.length} heuristics | ${toneRuleUpdates.length} tone rules`;

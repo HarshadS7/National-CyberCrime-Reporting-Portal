@@ -1,6 +1,5 @@
 import { nanoid } from "nanoid";
-import { db } from "../db/index.js";
-import { generatedContent } from "../db/schema.js";
+import { generatedContentCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import { llmGenerateText } from "../lib/llm.js";
 import type {
@@ -276,18 +275,16 @@ export async function runContentForgeAgent(
 
     // Persist each touch to DB
     for (const touch of content.touches) {
-      db.insert(generatedContent)
-        .values({
-          id: nanoid(),
-          leadId: lead.id,
-          touchNumber: touch.touchNumber,
-          channel: touch.channel,
-          subject: touch.subject || null,
-          body: touch.body,
-          preview: touch.preview,
-          generatedAt: content.generatedAt,
-        })
-        .run();
+      await generatedContentCol().insertOne({
+        _id: nanoid(),
+        leadId: lead.id,
+        touchNumber: touch.touchNumber,
+        channel: touch.channel,
+        subject: touch.subject || null,
+        body: touch.body,
+        preview: touch.preview,
+        generatedAt: content.generatedAt,
+      });
     }
 
     const durationMs = Date.now() - startTime;

@@ -1,6 +1,5 @@
 import { nanoid } from "nanoid";
-import { db } from "../db/index.js";
-import { scoringWeights as weightsTable, intentScores } from "../db/schema.js";
+import { scoringWeightsCol, intentScoresCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import type {
   EnrichedLead,
@@ -16,8 +15,8 @@ const AGENT_NAME = "Intent Scorer";
 
 // ─── Load Dynamic Weights from DB ───
 
-function loadWeights(): ScoringWeights {
-  const rows = db.select().from(weightsTable).all();
+async function loadWeights(): Promise<ScoringWeights> {
+  const rows = await scoringWeightsCol().find({}).toArray();
 
   if (rows.length === 0) {
     return { ...DEFAULT_SCORING_WEIGHTS };
@@ -218,7 +217,7 @@ export async function runIntentScorerAgent(
 
   try {
     // Load dynamic weights from DB
-    const weights = loadWeights();
+    const weights = await loadWeights();
 
     // Score each dimension
     const dimensionResults: Array<{ name: string; result: { score: number; reasoning: string }; weight: number }> = [
@@ -268,17 +267,15 @@ export async function runIntentScorerAgent(
     };
 
     // Persist to DB
-    db.insert(intentScores)
-      .values({
-        id: nanoid(),
-        leadId: lead.id,
-        compositeScore,
-        tier,
-        dimensions: JSON.stringify(dimensions),
-        topContributors: JSON.stringify(topContributors),
-        generatedAt: intentScore.generatedAt,
-      })
-      .run();
+    await intentScoresCol().insertOne({
+      _id: nanoid(),
+      leadId: lead.id,
+      compositeScore,
+      tier,
+      dimensions: JSON.stringify(dimensions),
+      topContributors: JSON.stringify(topContributors),
+      generatedAt: intentScore.generatedAt,
+    });
 
     const durationMs = Date.now() - startTime;
     const summary = `Score: ${compositeScore}/100 (${tier}) — Top: ${topContributors.join(", ")}`;
