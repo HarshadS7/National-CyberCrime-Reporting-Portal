@@ -168,8 +168,11 @@ export async function runResponseMonitorAgent(
       reasoning = "No response received within monitoring window";
       action = "nurture";
     } else {
-      // Classify the response
-      const classification = await classifySentimentLLM(messageBody);
+      // Classify the response — use keyword-based in simulation mode, LLM otherwise
+      const { config } = await import("../config.js");
+      const classification = config.simulationMode
+        ? classifySentimentKeywords(messageBody)
+        : await classifySentimentLLM(messageBody);
       sentiment = classification.sentiment;
       reasoning = classification.reasoning;
       action = classification.action;

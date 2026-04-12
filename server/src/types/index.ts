@@ -264,6 +264,7 @@ export interface LearningResult {
 
 // ─── SSE Events ───
 export type SSEEventType =
+  | "connected"
   | "agent_status"
   | "score_update"
   | "signal_update"

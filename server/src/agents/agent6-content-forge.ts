@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import { config } from "../config.js";
 import { generatedContentCol } from "../db/index.js";
 import { sseManager } from "../lib/sse.js";
 import { llmGenerateText } from "../lib/llm.js";
@@ -185,15 +186,15 @@ function simulateContent(
       email: {
         1: {
           subject: `${lead.companyName}'s ${lead.industry || "growth"} trajectory — quick thought`,
-          body: `Hi ${lead.contactName},\n\nI noticed ${lead.companyName} has been making moves in ${lead.industry || "the industry"} — ${intent.tier === "HOT" ? "particularly impressive" : "interesting to see"} given the current market dynamics.\n\n${persona.archetype === "strategic_executive" ? "From a strategic perspective" : persona.archetype === "practitioner" ? "From a technical standpoint" : "Looking at the bigger picture"}, there's an angle I think could accelerate what your team is building.\n\nWorth a 15-minute conversation this week?\n\nBest,\n[Your Name]`,
+          body: `Hi ${lead.contactName},\n\nI noticed ${lead.companyName} has been making moves in ${lead.industry || "the industry"} — ${intent.tier === "HOT" ? "particularly impressive" : "interesting to see"} given the current market dynamics.\n\n${persona.archetype === "strategic_executive" ? "From a strategic perspective" : persona.archetype === "practitioner" ? "From a technical standpoint" : "Looking at the bigger picture"}, there's an angle I think could accelerate what your team is building.\n\nWorth a 15-minute conversation this week?\n\nBest,\nAlex from NERVE`,
         },
         2: {
           subject: `Re: Following up — ${lead.companyName}`,
-          body: `Hi ${lead.contactName},\n\nWanted to share a quick data point: companies similar to ${lead.companyName} in ${lead.industry || "your space"} saw 40% improvement in outreach efficiency after optimizing their approach.\n\nI put together a brief analysis specific to your situation. Happy to walk through it in 10 minutes.\n\nCheers,\n[Your Name]`,
+          body: `Hi ${lead.contactName},\n\nWanted to share a quick data point: companies similar to ${lead.companyName} in ${lead.industry || "your space"} saw 40% improvement in outreach efficiency after optimizing their approach.\n\nI put together a brief analysis specific to your situation. Happy to walk through it in 10 minutes.\n\nCheers,\nAlex from NERVE`,
         },
         3: {
           subject: `Last note — ${lead.contactName}`,
-          body: `Hi ${lead.contactName},\n\nI'll keep this short — I genuinely think there's mutual value in connecting, but I respect your time.\n\nIf the timing isn't right, no worries at all. If it is, here's my calendar: [link]\n\nEither way, wishing ${lead.companyName} continued success.\n\nBest,\n[Your Name]`,
+          body: `Hi ${lead.contactName},\n\nI'll keep this short — I genuinely think there's mutual value in connecting, but I respect your time.\n\nIf the timing isn't right, no worries at all. If it is, here's my Calendly: calendly.com/nerve-demo\n\nEither way, wishing ${lead.companyName} continued success.\n\nBest,\nAlex from NERVE`,
         },
       },
       linkedin_dm: {
@@ -245,15 +246,15 @@ export async function runContentForgeAgent(
   try {
     let content: GeneratedContent;
 
-    // Check if LLM output looks simulated (quota exceeded or no key)
-    const testResponse = await llmGenerateText("test", "say ok");
-    const isSimulated = testResponse.startsWith("[SIMULATED]") || testResponse.startsWith("[QUOTA_EXCEEDED]");
+    // Check if LLM key is available — don't waste a test call
+    const hasLlmKey = !!(config.groqApiKey && config.groqApiKey.length > 10);
+    const isSimulated = !hasLlmKey || config.simulationMode;
 
     if (isSimulated) {
       // Use rich template-based simulation
       content = simulateContent(lead, strategy, persona, intent);
     } else {
-      // Generate real content with Gemini
+      // Generate real content with Groq (Llama 3.3 70B)
       const touchPromises = strategy.cadence.map((tp) =>
         generateTouchContent(lead, signals, intent, persona, strategy, tp.touchNumber, tp.channel)
       );

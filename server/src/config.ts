@@ -46,8 +46,8 @@ export const config = {
   mongoUri: process.env.MONGO_URI || "mongodb://localhost:27017",
   mongoDbName: process.env.MONGO_DB_NAME || "nerve",
 
-  // LLM
-  geminiApiKey: process.env.GEMINI_API_KEY || "",
+  // LLM (Groq — llama-3.3-70b-versatile)
+  groqApiKey: process.env.GROQ_API_KEY || "",
 
   // Enrichment & Signals
   apolloApiKey: process.env.APOLLO_API_KEY || "",

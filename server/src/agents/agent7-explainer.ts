@@ -170,6 +170,12 @@ async function generateSummary(
   intent: IntentScore,
   strategy: OutreachStrategy
 ): Promise<string> {
+  // In simulation mode, generate summary without LLM call for speed
+  const { config } = await import("../config.js");
+  if (config.simulationMode) {
+    return `We're reaching ${lead.contactName} at ${lead.companyName} via ${strategy.primaryChannel} using a ${strategy.toneFramework.replace(/_/g, " ")} approach. They scored ${intent.compositeScore}/100 (${intent.tier}), making them ${intent.tier === "HOT" ? "a high-priority target for immediate outreach" : intent.tier === "WARM" ? "a solid prospect worth engaging" : "a lead to nurture carefully"}. The ${strategy.cadence.length}-touch cadence will unfold over ${strategy.cadence[strategy.cadence.length - 1]?.dayOffset || 7} days.`;
+  }
+
   const systemPrompt = `You are a sales strategy advisor explaining AI-driven outreach decisions to a human operator. Write in plain English, 2-3 sentences max. Be specific, not generic.`;
 
   const userMessage = `Summarize the outreach plan for ${lead.contactName} (${lead.contactTitle} at ${lead.companyName}):

@@ -185,8 +185,8 @@ export async function runPersonaAnalystAgent(lead: EnrichedLead): Promise<Person
   try {
     let profile: PersonaProfile;
 
-    // Use LLM if available, otherwise fall back to rules
-    if (config.geminiApiKey && config.geminiApiKey !== "your-gemini-key" && config.geminiApiKey !== "") {
+    // Use LLM if available and not in simulation, otherwise fall back to rules
+    if (!config.simulationMode && config.groqApiKey && config.groqApiKey !== "" && config.groqApiKey.length > 10) {
       profile = await classifyWithLLM(lead);
     } else {
       profile = classifyWithRules(lead);

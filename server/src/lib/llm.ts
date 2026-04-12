@@ -1,52 +1,52 @@
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { generateText, generateObject } from "ai";
 import { config } from "../config.js";
 import type { ZodSchema } from "zod";
 
-const google = createGoogleGenerativeAI({
-  apiKey: config.geminiApiKey,
+const groq = createGroq({
+  apiKey: config.groqApiKey,
 });
 
-// Gemini 2.0 Flash — fast, capable, generally available
-const MODEL = "gemini-2.0-flash";
+// Groq — Llama 3.3 70B Versatile (free, fast, capable)
+const MODEL = "llama-3.3-70b-versatile";
 
 function hasKey(): boolean {
-  return !!(config.geminiApiKey && config.geminiApiKey.length > 10);
+  return !!(config.groqApiKey && config.groqApiKey.length > 10);
 }
 
-/** Check if the error is a quota/rate-limit error (free tier exhausted) */
+/** Check if the error is a quota/rate-limit error */
 function isQuotaError(error: unknown): boolean {
   const msg = String(error);
-  return msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota") || msg.includes("429");
+  return msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota") || msg.includes("429") || msg.includes("rate_limit");
 }
 
-/** Generate free-form text from Gemini */
+/** Generate free-form text from Groq (Llama 3.3 70B) */
 export async function llmGenerateText(
   systemPrompt: string,
   userMessage: string
 ): Promise<string> {
   if (!hasKey()) {
-    console.warn("[LLM] No Gemini API key — returning simulated response");
+    console.warn("[LLM] No Groq API key — returning simulated response");
     return `[SIMULATED] ${systemPrompt.slice(0, 80)}... | Input: ${userMessage.slice(0, 80)}`;
   }
 
   try {
     const { text } = await generateText({
-      model: google(MODEL),
+      model: groq(MODEL),
       system: systemPrompt,
       prompt: userMessage,
     });
     return text;
   } catch (error) {
     if (isQuotaError(error)) {
-      console.warn("[LLM] Gemini quota exhausted — returning simulated response");
+      console.warn("[LLM] Groq rate limit — returning simulated response");
       return `[QUOTA_EXCEEDED] ${userMessage.slice(0, 100)}`;
     }
     throw error;
   }
 }
 
-/** Generate structured JSON from Gemini using Zod schema */
+/** Generate structured JSON from Groq (Llama 3.3 70B) using Zod schema */
 export async function llmGenerateObject<T>(
   systemPrompt: string,
   userMessage: string,
@@ -54,12 +54,12 @@ export async function llmGenerateObject<T>(
   schemaName: string
 ): Promise<T> {
   if (!hasKey()) {
-    throw new Error(`GEMINI_API_KEY not set — cannot generate structured object for "${schemaName}"`);
+    throw new Error(`GROQ_API_KEY not set — cannot generate structured object for "${schemaName}"`);
   }
 
   try {
     const { object } = await generateObject({
-      model: google(MODEL),
+      model: groq(MODEL),
       system: systemPrompt,
       prompt: userMessage,
       schema,
@@ -68,7 +68,7 @@ export async function llmGenerateObject<T>(
     return object;
   } catch (error) {
     if (isQuotaError(error)) {
-      console.warn(`[LLM] Gemini quota exhausted for "${schemaName}" — throwing`);
+      console.warn(`[LLM] Groq rate limit for "${schemaName}" — throwing`);
     }
     throw error;
   }

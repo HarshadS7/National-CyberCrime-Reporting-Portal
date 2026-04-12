@@ -33,10 +33,12 @@ interface ApolloEnrichmentResult {
 
 async function enrichViaApollo(
   companyName: string,
-  contactName?: string
+  contactName?: string,
+  contactTitle?: string,
+  location?: string
 ): Promise<ApolloEnrichmentResult> {
   if (config.simulationMode) {
-    return simulateApolloEnrichment(companyName, contactName);
+    return simulateApolloEnrichment(companyName, contactName, contactTitle, location);
   }
 
   // Real Apollo API call
@@ -57,7 +59,7 @@ async function enrichViaApollo(
 
     if (!response.ok) {
       console.warn(`Apollo API returned ${response.status}, falling back to simulation`);
-      return simulateApolloEnrichment(companyName, contactName);
+      return simulateApolloEnrichment(companyName, contactName, contactTitle, location);
     }
 
     const data = (await response.json()) as {
@@ -82,7 +84,7 @@ async function enrichViaApollo(
     };
     const person = data.people?.[0];
     if (!person) {
-      return simulateApolloEnrichment(companyName, contactName);
+      return simulateApolloEnrichment(companyName, contactName, contactTitle, location);
     }
 
     const org = person.organization;
@@ -105,13 +107,15 @@ async function enrichViaApollo(
     };
   } catch (error) {
     console.warn("Apollo API error, falling back to simulation:", error);
-    return simulateApolloEnrichment(companyName, contactName);
+    return simulateApolloEnrichment(companyName, contactName, contactTitle, location);
   }
 }
 
 function simulateApolloEnrichment(
   companyName: string,
-  contactName?: string
+  contactName?: string,
+  contactTitle?: string,
+  location?: string
 ): ApolloEnrichmentResult {
   const industries = ["SaaS", "FinTech", "HealthTech", "EdTech", "E-commerce", "DevTools", "AI/ML"];
   const stages = ["Seed", "Series A", "Series B", "Series C", "Growth", "Public"];
@@ -130,6 +134,9 @@ function simulateApolloEnrichment(
     Public: "N/A",
   };
 
+  // Infer seniority from provided title
+  const inferredSeniority = inferSeniority(contactTitle);
+
   return {
     companyDomain: `${companyName.toLowerCase().replace(/\s+/g, "")}.com`,
     companySize: randomPick(["11-50", "51-200", "201-500", "501-1000"]),
@@ -137,14 +144,24 @@ function simulateApolloEnrichment(
     fundingStage: stage,
     fundingAmount: amounts[stage] || "$10M",
     techStack: stacks.sort(() => Math.random() - 0.5).slice(0, 4),
-    headquarters: randomPick(cities),
+    headquarters: location || randomPick(cities),
     contactName: contactName || `${randomPick(["Rahul", "Priya", "Amit", "Sarah", "James"])} ${randomPick(["Sharma", "Patel", "Singh", "Chen", "Wilson"])}`,
-    contactTitle: randomPick(["VP Sales", "CTO", "Head of Engineering", "VP Marketing", "Director of Product"]),
+    contactTitle: contactTitle || randomPick(["VP Sales", "CTO", "Head of Engineering", "VP Marketing", "Director of Product"]),
     contactEmail: `${(contactName || "contact").toLowerCase().replace(/\s+/g, ".")}@${companyName.toLowerCase().replace(/\s+/g, "")}.com`,
     contactPhone: "+91-9876543210",
     contactLinkedIn: `https://linkedin.com/in/${(contactName || "contact").toLowerCase().replace(/\s+/g, "-")}`,
-    seniority: randomPick(["C-Level", "VP", "Director", "Manager"]),
+    seniority: inferredSeniority || randomPick(["C-Level", "VP", "Director", "Manager"]),
   };
+}
+
+function inferSeniority(title?: string): string | undefined {
+  if (!title) return undefined;
+  const t = title.toLowerCase();
+  if (t.includes("chief") || t.includes("ceo") || t.includes("cto") || t.includes("cfo") || t.includes("coo") || t.includes("co-founder") || t.includes("founder")) return "C-Level";
+  if (t.includes("vp") || t.includes("vice president")) return "VP";
+  if (t.includes("director") || t.includes("head of")) return "Director";
+  if (t.includes("manager") || t.includes("lead")) return "Manager";
+  return undefined;
 }
 
 function categorizeSize(employees: number): string {
@@ -161,7 +178,7 @@ function categorizeSize(employees: number): string {
 async function discoverCompanies(
   input: DiscoveryInput
 ): Promise<Array<{ companyName: string; contactTitle: string; reason: string }>> {
-  if (config.simulationMode && !config.geminiApiKey) {
+  if (config.simulationMode && !config.groqApiKey) {
     return simulateDiscovery(input);
   }
 
@@ -247,7 +264,7 @@ export async function runLeadIngestionAgent(input: LeadInput): Promise<EnrichedL
         return [];
       }
 
-      const enrichment = await enrichViaApollo(targeted.companyName, targeted.contactName);
+      const enrichment = await enrichViaApollo(targeted.companyName, targeted.contactName, targeted.contactTitle, targeted.location);
       const lead = buildEnrichedLead(enrichment, targeted);
       enrichedLeads.push(lead);
     } else {
@@ -267,9 +284,7 @@ export async function runLeadIngestionAgent(input: LeadInput): Promise<EnrichedL
         const isDuplicate = await checkDuplicate(rec.companyName);
         if (isDuplicate) continue;
 
-        const enrichment = await enrichViaApollo(rec.companyName);
-        // Override contact title with the recommended one
-        enrichment.contactTitle = rec.contactTitle;
+        const enrichment = await enrichViaApollo(rec.companyName, undefined, rec.contactTitle);
 
         const lead = buildEnrichedLead(enrichment, {
           ...discovery,

@@ -96,26 +96,48 @@ function simulateTavilySearch(query: string): TavilyResult[] {
 function classifySignal(result: TavilyResult): { category: SignalCategory; strength: SignalStrength } {
   const text = `${result.title} ${result.content}`.toLowerCase();
 
-  if (text.includes("funding") || text.includes("raised") || text.includes("series") || text.includes("investment")) {
-    return { category: "funding", strength: "HIGH" };
-  }
-  if (text.includes("launch") || text.includes("product") || text.includes("release") || text.includes("unveiled")) {
-    return { category: "product_launch", strength: "HIGH" };
-  }
-  if (text.includes("hire") || text.includes("appointed") || text.includes("cto") || text.includes("vp") || text.includes("chief")) {
-    return { category: "executive_hire", strength: "HIGH" };
-  }
-  if (text.includes("expand") || text.includes("new office") || text.includes("market") || text.includes("region")) {
-    return { category: "geographic_expansion", strength: "MEDIUM" };
-  }
-  if (text.includes("hiring") || text.includes("open roles") || text.includes("engineering positions") || text.includes("careers")) {
-    return { category: "hiring_spike", strength: "MEDIUM" };
-  }
-  if (text.includes("partner") || text.includes("collaboration") || text.includes("integration")) {
-    return { category: "partnership", strength: "MEDIUM" };
-  }
-  if (text.includes("award") || text.includes("recognition") || text.includes("best")) {
-    return { category: "award", strength: "LOW" };
+  // Score each category by keyword match count for more accurate classification
+  const categories: Array<{ category: SignalCategory; strength: SignalStrength; score: number }> = [];
+
+  // Hiring spike — check BEFORE executive_hire to avoid "hiring" being caught by "hire"
+  const hiringKeywords = ["hiring", "open roles", "open positions", "engineering positions", "careers", "job openings", "we're hiring", "is hiring", "open engineering"];
+  const hiringScore = hiringKeywords.reduce((s, kw) => s + (text.includes(kw) ? 1 : 0), 0);
+  if (hiringScore > 0) categories.push({ category: "hiring_spike", strength: "MEDIUM", score: hiringScore });
+
+  // Executive hire — specific leadership appointments
+  const execKeywords = ["appointed", "new cto", "new ceo", "new vp", "new chief", "names new", "hires former", "joins as"];
+  const execScore = execKeywords.reduce((s, kw) => s + (text.includes(kw) ? 1 : 0), 0);
+  if (execScore > 0) categories.push({ category: "executive_hire", strength: "HIGH", score: execScore });
+
+  // Funding — financial signals
+  const fundingKeywords = ["funding", "raised", "series a", "series b", "series c", "series d", "investment", "seed round", "led by", "venture capital", "valuation"];
+  const fundingScore = fundingKeywords.reduce((s, kw) => s + (text.includes(kw) ? 1 : 0), 0);
+  if (fundingScore > 0) categories.push({ category: "funding", strength: "HIGH", score: fundingScore });
+
+  // Product launch
+  const productKeywords = ["launch", "unveiled", "announces new", "release", "new product", "product suite", "generally available"];
+  const productScore = productKeywords.reduce((s, kw) => s + (text.includes(kw) ? 1 : 0), 0);
+  if (productScore > 0) categories.push({ category: "product_launch", strength: "HIGH", score: productScore });
+
+  // Geographic expansion
+  const geoKeywords = ["expand", "new office", "new market", "expansion", "opens office", "opens new", "entering"];
+  const geoScore = geoKeywords.reduce((s, kw) => s + (text.includes(kw) ? 1 : 0), 0);
+  if (geoScore > 0) categories.push({ category: "geographic_expansion", strength: "MEDIUM", score: geoScore });
+
+  // Partnership
+  const partnerKeywords = ["partner", "collaboration", "integration", "strategic alliance", "joins forces"];
+  const partnerScore = partnerKeywords.reduce((s, kw) => s + (text.includes(kw) ? 1 : 0), 0);
+  if (partnerScore > 0) categories.push({ category: "partnership", strength: "MEDIUM", score: partnerScore });
+
+  // Award
+  const awardKeywords = ["award", "recognition", "named best", "wins", "honored"];
+  const awardScore = awardKeywords.reduce((s, kw) => s + (text.includes(kw) ? 1 : 0), 0);
+  if (awardScore > 0) categories.push({ category: "award", strength: "LOW", score: awardScore });
+
+  // Return the highest-scoring category
+  if (categories.length > 0) {
+    categories.sort((a, b) => b.score - a.score);
+    return { category: categories[0].category, strength: categories[0].strength };
   }
 
   return { category: "other", strength: "LOW" };

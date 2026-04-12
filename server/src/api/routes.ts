@@ -40,7 +40,7 @@ api.get("/health", (c) => {
   return c.json({
     status: "ok",
     simulationMode: config.simulationMode,
-    hasGeminiKey: !!config.geminiApiKey && config.geminiApiKey.length > 10,
+    hasGroqKey: !!config.groqApiKey && config.groqApiKey.length > 10,
     hasApolloKey: !!config.apolloApiKey && config.apolloApiKey.length > 5,
     hasTavilyKey: !!config.tavilyApiKey && config.tavilyApiKey.length > 5,
     hasResendKey: !!config.resendApiKey && config.resendApiKey.length > 5,
@@ -288,18 +288,14 @@ async function runFullPipeline(pipelineId: string, lead: EnrichedLead) {
   const strategy = await runStrategyCommanderAgent(lead, signalBundle, intentScore, personaProfile);
   await logAgentRun(lead.id, 5, "Strategy Commander", strategy);
 
-  // ── Agents 6 & 7 in parallel ──
+  // ── Agent 6: Content Forge ──
   await updateCampaignAgent(lead.id, 6);
-  const [content, rationale] = await Promise.all([
-    runContentForgeAgent(lead, signalBundle, intentScore, personaProfile, strategy),
-    runExplainerAgent(lead, signalBundle, intentScore, personaProfile, strategy, {
-      // Placeholder content for Agent 7 — runs in parallel with 6
-      leadId: lead.id,
-      touches: [],
-      generatedAt: new Date().toISOString(),
-    }),
-  ]);
+  const content = await runContentForgeAgent(lead, signalBundle, intentScore, personaProfile, strategy);
   await logAgentRun(lead.id, 6, "Content Forge", content);
+
+  // ── Agent 7: Explainer (needs real content from Agent 6) ──
+  await updateCampaignAgent(lead.id, 7);
+  const rationale = await runExplainerAgent(lead, signalBundle, intentScore, personaProfile, strategy, content);
   await logAgentRun(lead.id, 7, "Explainer", rationale);
 
   // ── Agent 8: Delivery ──

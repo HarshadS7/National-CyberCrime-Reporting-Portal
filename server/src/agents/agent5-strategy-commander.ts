@@ -165,11 +165,12 @@ function buildCadence(
 
   // Optimal send time: Tuesday 9:30 AM local time
   const now = new Date();
-  const daysUntilTuesday = (9 - now.getUTCDay()) % 7 || 7; // Next Tuesday (day 2)
-  const adjustedDays = daysUntilTuesday <= 0 ? 7 : daysUntilTuesday;
+  const currentDay = now.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue, ..., 6=Sat
+  let daysUntilTuesday = (2 - currentDay + 7) % 7; // Next Tuesday (day 2)
+  if (daysUntilTuesday === 0) daysUntilTuesday = 7; // If today is Tuesday, schedule for next Tuesday
 
   const sendDate = new Date(now);
-  sendDate.setUTCDate(sendDate.getUTCDate() + adjustedDays);
+  sendDate.setUTCDate(sendDate.getUTCDate() + daysUntilTuesday);
   sendDate.setUTCHours(9 - offsetHours, 30, 0, 0); // 9:30 AM local
 
   const sendTimestamp = sendDate.toISOString();
