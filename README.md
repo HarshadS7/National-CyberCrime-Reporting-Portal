@@ -1,5 +1,22 @@
 # NERVE — Autonomous Outreach Engine
 
+
+## Problem Statement
+
+B2B sales development is a constant battle between quantity and quality. Sales teams spend the majority of their time on manual, non-revenue-generating tasks: researching leads, finding contact information, searching for relevant "buy signals," and writing endless email variations. This operational drag leads to:
+
+- **Slow Speed-to-Lead:** High-intent prospects go cold while reps are buried in research.
+- **Generic Messaging:** Under pressure to hit quotas, reps fall back on generic templates that get ignored.
+- **Inconsistent Execution:** The quality of outreach varies wildly from rep to rep and day to day.
+- **Wasted Talent:** Skilled salespeople are stuck doing data entry instead of building relationships and closing deals.
+
+## Our Solution
+
+NERVE is an autonomous agentic workforce designed to automate the entire B2B outreach process from end to end. It acts as a force multiplier for your sales team, executing the time-consuming research and writing tasks with machine speed and precision.
+
+By connecting a series of specialized AI agents, NERVE transforms a single trigger—like a company name—into a fully executed, hyper-personalized outreach campaign. It finds the lead, scores their intent, identifies the perfect moment to engage, and crafts a unique message based on real-time data.
+
+This allows your human sales team to focus exclusively on high-value activities: engaging with warm, high-intent leads and closing deals.
 > 10-agent AI pipeline that finds, scores, writes, and delivers B2B outreach — zero human input after trigger.
 
 ```
