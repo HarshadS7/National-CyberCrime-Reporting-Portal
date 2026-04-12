@@ -152,97 +152,72 @@ function HeroSection() {
         </motion.div>
 
       </div>
+
+      {/* Visual Component */}
+      <div className="w-full mt-16 lg:mt-0 lg:flex-1 flex justify-center lg:justify-end items-center relative z-10 lg:pr-8 xl:pr-16">
+         <HeroVisual />
+      </div>
     </section>
   );
 }
 
 
-// --- Component: AgentGraphCard.tsx ---
-function AgentGraphCard() {
+// --- Component: HeroVisual.tsx ---
+function HeroVisual() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, rotateX: 10 }}
-      animate={{ opacity: 1, y: 0, rotateX: 0 }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
-      className="w-[480px] h-[520px] bg-[#0E0E0C] border border-[rgba(255,255,255,0.08)] rounded-[16px] p-6 shadow-2xl relative overflow-hidden"
-    >
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-[#7BC49A] animate-[pulse-dot_1.8s_ease-in-out_infinite]" />
-          <span className="font-mono text-[0.65rem] text-[#7BC49A] uppercase tracking-wider">Live Agent Trace</span>
+    <div className="relative w-full max-w-[500px] aspect-square flex items-center justify-center pointer-events-none origin-center xl:scale-110">
+      
+      {/* Theme Glow / Mesh effect */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] bg-[#3E9B63] rounded-full blur-[80px] opacity-40 z-0" />
+      <div className="absolute top-[30%] right-[15%] w-[180px] h-[180px] bg-[#7BC49A] rounded-full blur-[60px] opacity-30 z-0" />
+
+      {/* Background SVG */}
+      <motion.img 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 3 }}
+        transition={{ duration: 1, ease: "easeOut" }}
+        src="/hero-base-layer.f5bfa73d.svg" 
+        alt="Network Graphics" 
+        className="absolute inset-0 w-full h-full object-contain opacity-70 z-10 filter drop-shadow-[0_0_10px_rgba(62,155,99,0.3)]"
+      />
+      
+      {/* Main Agent Webp */}
+      <motion.img
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+        src="/hero-agent.webp"
+        alt="AI Agent"
+        className="relative z-20 w-[95%] h-[95%] object-contain drop-shadow-[0_20px_40px_rgba(26,92,53,0.35)]"
+      />
+      
+      {/* Floating Status Badge */}
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 0.8, ease: "easeOut" }}
+        className="absolute bottom-[8%] left-[-2%] sm:left-[5%] bg-white/90 backdrop-blur-md border border-[#EDE9D8] px-4 py-3 rounded-[12px] shadow-xl z-30 flex items-center gap-3 pointer-events-auto"
+      >
+        <div className="w-10 h-10 rounded-full bg-[#E5F3EB] flex items-center justify-center">
+            <Cpu className="w-5 h-5 text-[#3E9B63]" />
         </div>
-        <span className="font-mono text-[0.65rem] text-[rgba(255,255,255,0.3)]">ID: #CORTEX-9X2</span>
-      </div>
+        <div>
+           <div className="font-heading text-[0.85rem] font-bold text-[#1A1A18] leading-tight">Neural Sync</div>
+           <div className="font-mono text-[0.65rem] text-[#3E9B63] uppercase">Active</div>
+        </div>
+      </motion.div>
 
-      {/* Graph Area */}
-      <div className="relative w-full h-[85%] border border-[rgba(255,255,255,0.04)] rounded-[8px] bg-[radial-gradient(ellipse_at_center,_rgba(26,92,53,0.15)_0%,_transparent_70%)] flex items-center justify-center">
-
-        {/* Background Grid */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-20"
-          style={{
-            backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-            backgroundSize: `24px 24px`
-          }}
-        />
-
-        {/* Nodes */}
-        <motion.div
-          initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 }}
-          className="absolute top-8 left-12 w-28 p-2 bg-[#1A1A18] border border-[#3E9B63]/30 rounded-md z-10"
-        >
-          <div className="font-mono text-[0.55rem] text-[#3E9B63] mb-1">DATA LAYER</div>
-          <div className="font-sans text-[0.7rem] text-white">Ingestion Agent</div>
-        </motion.div>
-
-        <motion.div
-          initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.5 }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 p-3 bg-[#1A5C35] border border-[#7BC49A]/50 rounded-lg shadow-[0_0_20px_rgba(62,155,99,0.3)] z-20"
-        >
-          <div className="font-mono text-[0.55rem] text-[#7BC49A] mb-1">CORE LOGIC</div>
-          <div className="font-sans text-[0.75rem] text-white font-medium">Strategy & Decide</div>
-        </motion.div>
-
-        <motion.div
-          initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.7 }}
-          className="absolute bottom-16 right-12 w-28 p-2 bg-[#1A1A18] border border-[#3E9B63]/30 rounded-md z-10"
-        >
-          <div className="font-mono text-[0.55rem] text-[#6B8EF0] mb-1">EXECUTION</div>
-          <div className="font-sans text-[0.7rem] text-white">Delivery Agent</div>
-        </motion.div>
-
-        {/* Neural Links (SVG) */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-          <motion.path
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 1, delay: 0.8 }}
-            d="M 120 60 C 180 60, 200 200, 240 200"
-            fill="none" stroke="rgba(62,155,99,0.4)" strokeWidth="1.5" strokeDasharray="4 4"
-          />
-          <motion.path
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 1, delay: 1 }}
-            d="M 240 200 C 280 200, 320 380, 370 380"
-            fill="none" stroke="rgba(62,155,99,0.4)" strokeWidth="1.5" strokeDasharray="4 4"
-          />
-        </svg>
-
-        {/* Floating Data Packets */}
-        <motion.div
-          animate={{ x: [120, 240], y: [60, 200], opacity: [0, 1, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 1.5 }}
-          className="absolute top-0 left-0 w-1.5 h-1.5 bg-[#7BC49A] rounded-full shadow-[0_0_8px_#7BC49A]"
-        />
-        <motion.div
-          animate={{ x: [240, 370], y: [200, 380], opacity: [0, 1, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 2.5 }}
-          className="absolute top-0 left-0 w-1.5 h-1.5 bg-[#6B8EF0] rounded-full shadow-[0_0_8px_#6B8EF0]"
-        />
-      </div>
-    </motion.div>
+       {/* Floating Performance Badge */}
+       <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, delay: 1, ease: "easeOut" }}
+        className="absolute top-[18%] right-[-2%] sm:right-[5%] bg-white/90 backdrop-blur-md border border-[#EDE9D8] px-4 py-3 rounded-[12px] shadow-xl z-30 flex flex-col gap-1 pointer-events-auto"
+      >
+        <div className="font-sans text-[0.7rem] text-[#6B6B62]">Response Rate</div>
+        <div className="font-heading text-[1.4rem] font-black text-[#1A5C35] leading-none">+34%</div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -1123,12 +1098,7 @@ export default function LandingPage() {
     <main className="min-h-screen bg-[#F5F2E8] overflow-x-hidden">
       <Navbar />
 
-      <section className="relative">
-        <HeroSection />
-        <div className="absolute hidden lg:block right-[3rem] top-1/2 -translate-y-1/2 z-[2]">
-          <AgentGraphCard />
-        </div>
-      </section>
+      <HeroSection />
 
       <HowItWorks />
 

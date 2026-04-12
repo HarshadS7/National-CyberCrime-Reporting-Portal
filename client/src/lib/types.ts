@@ -229,7 +229,7 @@ export interface SSEEvent {
 export interface HealthCheck {
   status: string;
   simulationMode: boolean;
-  hasGeminiKey: boolean;
+  hasGroqKey: boolean;
   hasApolloKey: boolean;
   hasTavilyKey: boolean;
   hasResendKey: boolean;

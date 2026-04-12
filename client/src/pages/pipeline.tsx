@@ -1,36 +1,116 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useSSE } from "@/hooks/use-sse";
 import { api } from "@/lib/api";
-import type { LeadDetail } from "@/lib/types";
-import AgentGraph from "@/components/agent-graph";
-import RightPanel from "@/components/right-panel";
-import ActivityLog from "@/components/activity-log";
+import type { LeadDetail, AgentRun } from "@/lib/types";
+import { PhaseContainer } from "@/components/pipeline/phase-container";
+import type { PhaseStatus } from "@/components/pipeline/phase-container";
+import {
+  ThinkingIndicator,
+  OutcomeCard,
+  OutcomeRow,
+  DataChip,
+  MetricTile,
+  StreamItem,
+  AgentTile,
+  ScoreBar,
+} from "@/components/pipeline/phase-outputs";
+import { StreamingText, GlowingBadge } from "@/components/ui/motion";
 import SimulateReply from "@/components/simulate-reply";
 import { Button } from "@/components/ui/button";
-import { GlowingBadge, StatusDot } from "@/components/ui/motion";
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Wifi,
   WifiOff,
-  RefreshCw,
   Building2,
   User,
+  Briefcase,
+  MapPin,
+  Mail,
+  Phone,
+  Linkedin,
+  Globe,
+  DollarSign,
+  Users,
+  Code2,
+  TrendingUp,
+  Radar,
+  Target,
+  Brain,
   Zap,
-  ToggleLeft,
-  ToggleRight,
-  Circle,
+  Lightbulb,
+  Send,
+  MessageSquare,
+  Eye,
+  GraduationCap,
   CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Volume2,
+  Calendar,
+  ArrowRight,
+  RefreshCw,
   Loader2,
+  FileText,
+  Sparkles,
+  Shield,
 } from "lucide-react";
 
+/* ─── Helpers ─── */
+function parseAgentOutput(run?: AgentRun): Record<string, unknown> {
+  if (!run?.output) return {};
+  try {
+    return typeof run.output === "string" ? JSON.parse(run.output) : (run.output as Record<string, unknown>);
+  } catch {
+    return {};
+  }
+}
+
+function getAgentRun(runs: AgentRun[], num: number): AgentRun | undefined {
+  return runs.find((r) => r.agentNumber === num);
+}
+
+function agentStatus(runs: AgentRun[], num: number, currentRunning: number | null): PhaseStatus {
+  const run = getAgentRun(runs, num);
+  if (run?.status === "complete") return "complete";
+  if (run?.status === "error") return "error";
+  if (currentRunning === num) return "running";
+  return "idle";
+}
+
+function phaseStatus(agents: number[], runs: AgentRun[], currentRunning: number | null): PhaseStatus {
+  const allComplete = agents.every((n) => getAgentRun(runs, n)?.status === "complete");
+  if (allComplete) return "complete";
+  const anyRunning = agents.some((n) => currentRunning === n);
+  if (anyRunning) return "running";
+  const anyError = agents.some((n) => getAgentRun(runs, n)?.status === "error");
+  if (anyError) return "error";
+  return "idle";
+}
+
+/* ─── Phase Definitions ─── */
+const PHASES = [
+  { id: 1, label: "Ingest",     agents: [1],       icon: "Users" },
+  { id: 2, label: "Intel",      agents: [2, 3, 4], icon: "Radar" },
+  { id: 3, label: "Strategy",   agents: [5],       icon: "Lightbulb" },
+  { id: 4, label: "Content",    agents: [6],       icon: "FileText" },
+  { id: 5, label: "Explain",    agents: [7],       icon: "Eye" },
+  { id: 6, label: "Deliver",    agents: [8],       icon: "Send" },
+  { id: 7, label: "Learn",      agents: [9, 10],   icon: "GraduationCap" },
+] as const;
+
+/* ─── Main Pipeline Page ─── */
 export default function PipelinePage() {
   const { id } = useParams<{ id: string }>();
   const { events, connected, clear } = useSSE(id);
   const [detail, setDetail] = useState<LeadDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [simMode, setSimMode] = useState(true);
+  const [currentAgent, setCurrentAgent] = useState<number | null>(null);
+  const [activePhase, setActivePhase] = useState(1);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -49,109 +129,129 @@ export default function PipelinePage() {
     fetchDetail();
   }, [fetchDetail]);
 
-  const realEvents = events.filter((e) => e.type !== "connected");
+  // Track SSE events for current running agent
   useEffect(() => {
-    const hasComplete = events.some((e) => e.type === "pipeline_complete");
-    if (hasComplete) {
-      const timer = setTimeout(fetchDetail, 500);
-      return () => clearTimeout(timer);
+    const agentEvents = events.filter((e) => e.type === "agent_status");
+    for (const e of agentEvents) {
+      const d = e.data as { agentNumber?: number; status?: string };
+      if (d.status === "running" && d.agentNumber) {
+        setCurrentAgent(d.agentNumber);
+        // Auto-advance to the phase containing this agent
+        const targetPhase = PHASES.find((p) => p.agents.includes(d.agentNumber!));
+        if (targetPhase) setActivePhase(targetPhase.id);
+      }
     }
-    if (realEvents.length > 0 || detail) {
-      const interval = setInterval(fetchDetail, 3000);
+    const complete = events.some((e) => e.type === "pipeline_complete");
+    if (complete) setCurrentAgent(null);
+  }, [events]);
+
+  // Poll for updates
+  const pipelineComplete = events.some((e) => e.type === "pipeline_complete");
+  useEffect(() => {
+    if (pipelineComplete) {
+      const t = setTimeout(fetchDetail, 500);
+      return () => clearTimeout(t);
+    }
+    const hasActivity = events.filter((e) => e.type !== "connected").length > 0;
+    if (hasActivity || detail) {
+      const interval = setInterval(fetchDetail, 2000);
       return () => clearInterval(interval);
     }
-  }, [events, realEvents.length, detail, fetchDetail]);
+  }, [events, pipelineComplete, detail, fetchDetail]);
 
-  async function toggleSimulation() {
-    try {
-      const res = await api.setSimulation(!simMode);
-      setSimMode(res.simulationMode);
-    } catch {
-      /* ignore */
-    }
-  }
-
+  const runs = detail?.agentRuns || [];
   const lead = detail?.lead;
-  const pipelineComplete = events.some((e) => e.type === "pipeline_complete");
-  const isRunning = realEvents.length > 0 && !pipelineComplete;
-  const completedAgents = detail?.agentRuns?.filter((r) => r.status === "complete").length || 0;
+  const isRunning = !pipelineComplete && events.filter((e) => e.type !== "connected").length > 0;
+  const completedCount = runs.filter((r) => r.status === "complete").length;
+
+  // Parse all agent outputs
+  const o1 = useMemo(() => parseAgentOutput(getAgentRun(runs, 1)), [runs]);
+  const o2 = useMemo(() => parseAgentOutput(getAgentRun(runs, 2)), [runs]);
+  const o3 = useMemo(() => parseAgentOutput(getAgentRun(runs, 3)), [runs]);
+  const o4 = useMemo(() => parseAgentOutput(getAgentRun(runs, 4)), [runs]);
+  const o5 = useMemo(() => parseAgentOutput(getAgentRun(runs, 5)), [runs]);
+  const o6 = useMemo(() => parseAgentOutput(getAgentRun(runs, 6)), [runs]);
+  const o7 = useMemo(() => parseAgentOutput(getAgentRun(runs, 7)), [runs]);
+  const o8 = useMemo(() => parseAgentOutput(getAgentRun(runs, 8)), [runs]);
+  const o9 = useMemo(() => parseAgentOutput(getAgentRun(runs, 9)), [runs]);
+  const o10 = useMemo(() => parseAgentOutput(getAgentRun(runs, 10)), [runs]);
+
+  // Navigation helpers
+  const canGoNext = activePhase < 7;
+  const canGoPrev = activePhase > 1;
+  const goNext = useCallback(() => {
+    if (canGoNext) {
+      setActivePhase((p) => p + 1);
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [canGoNext]);
+  const goPrev = useCallback(() => {
+    if (canGoPrev) {
+      setActivePhase((p) => p - 1);
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [canGoPrev]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); goNext(); }
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); goPrev(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [goNext, goPrev]);
+
+  // Phase status for each step
+  const phaseStatuses = useMemo(
+    () => PHASES.map((p) => phaseStatus(p.agents as unknown as number[], runs, currentAgent)),
+    [runs, currentAgent]
+  );
+
+  // Show simulate reply on last phase when pipeline is complete
+  const showSimulate = pipelineComplete && activePhase === 7;
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* ── Top Bar ─────────────────────────────────────────── */}
-      <div className="shrink-0 px-4 py-2.5 border-b border-border/40 flex items-center gap-3 bg-card/20 backdrop-blur-sm">
+      {/* ── Top Bar ── */}
+      <div className="shrink-0 px-5 py-3 border-b border-border/30 flex items-center gap-3 bg-card/20 backdrop-blur-sm">
         <Link to="/dashboard">
-          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs hover:bg-primary/10 hover:text-primary">
+          <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs hover:bg-primary/10">
             <ArrowLeft className="size-3" /> Back
           </Button>
         </Link>
-
-        <div className="h-4 w-px bg-border/40" />
+        <div className="h-4 w-px bg-border/30" />
 
         {lead ? (
-          <motion.div
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 min-w-0"
-          >
-            <div className="size-6 rounded-md bg-primary/15 flex items-center justify-center">
-              <Building2 className="size-3.5 text-primary" />
-            </div>
-            <span className="text-sm font-semibold truncate">{lead.companyName}</span>
-            {lead.contactName && (
-              <>
-                <span className="text-muted-foreground/40">·</span>
-                <User className="size-3 text-muted-foreground/60" />
-                <span className="text-xs text-muted-foreground truncate">{lead.contactName}</span>
-              </>
-            )}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
+            <Building2 className="size-4 text-primary" />
+            <span className="text-sm font-semibold">{lead.companyName}</span>
+            <span className="text-muted-foreground/40">·</span>
+            <User className="size-3 text-muted-foreground/60" />
+            <span className="text-xs text-muted-foreground">{lead.contactName}</span>
           </motion.div>
-        ) : (
-          <span className="text-sm text-muted-foreground">
-            {loading ? (
-              <span className="flex items-center gap-1.5">
-                <Loader2 className="size-3 animate-spin" /> Loading…
-              </span>
-            ) : (
-              "Pipeline"
-            )}
+        ) : loading ? (
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Loader2 className="size-3 animate-spin" /> Loading…
           </span>
-        )}
+        ) : null}
 
         {/* Pipeline Status */}
-        <div className="flex items-center gap-1.5 ml-2">
+        <div className="ml-3">
           {pipelineComplete ? (
             <GlowingBadge variant="emerald" pulse>
-              <CheckCircle2 className="size-2.5 mr-1" /> Complete
+              <CheckCircle2 className="size-2.5 mr-0.5" /> Complete — {completedCount}/10 Agents
             </GlowingBadge>
           ) : isRunning ? (
             <GlowingBadge variant="purple" pulse>
-              <StatusDot status="running" /> Running — {completedAgents}/10
+              Running — {completedCount}/10
             </GlowingBadge>
           ) : (
-            <GlowingBadge variant="cyan">
-              <Circle className="size-2.5 mr-1" /> Idle
-            </GlowingBadge>
+            <GlowingBadge variant="cyan">Idle</GlowingBadge>
           )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Simulation toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 h-7 text-xs hover:bg-blue-500/10"
-            onClick={toggleSimulation}
-          >
-            {simMode ? (
-              <ToggleRight className="size-3.5 text-blue-400" />
-            ) : (
-              <ToggleLeft className="size-3.5 text-muted-foreground" />
-            )}
-            <span className="font-mono text-[10px]">SIM {simMode ? "ON" : "OFF"}</span>
-          </Button>
-
-          {/* Connection indicator */}
           <div
             className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-medium border ${
               connected
@@ -160,80 +260,825 @@ export default function PipelinePage() {
             }`}
           >
             {connected ? <Wifi className="size-2.5" /> : <WifiOff className="size-2.5" />}
-            {connected ? "SSE Live" : "Disconnected"}
+            {connected ? "Live" : "Offline"}
           </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 hover:bg-primary/10"
-            onClick={() => {
-              clear();
-              fetchDetail();
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { clear(); fetchDetail(); }}>
             <RefreshCw className="size-3.5" />
           </Button>
         </div>
       </div>
 
-      {/* ── Main Content — 3 Column Layout ──────────────────── */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left + Center: Graph + Activity */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Agent Graph */}
-          <div className="flex-1 min-h-0">
-            <AgentGraph sseEvents={events} agentRuns={detail?.agentRuns} />
-          </div>
-
-          {/* Bottom bar: Activity + Simulate */}
-          <div className="shrink-0 h-56 border-t border-border/40 flex">
-            {/* Activity Log */}
-            <div className="flex-1 overflow-hidden">
-              <div className="px-3 py-1.5 border-b border-border/40 flex items-center gap-2 bg-card/20 backdrop-blur-sm">
-                <div className="size-4 rounded bg-primary/15 flex items-center justify-center">
-                  <Zap className="size-2.5 text-primary" />
-                </div>
-                <span className="text-xs font-medium">Activity Feed</span>
-                <div className="ml-auto flex items-center gap-1.5">
-                  {isRunning && (
-                    <span className="relative flex size-1.5">
-                      <span className="absolute inline-flex size-full rounded-full bg-primary/60 animate-ping" />
-                      <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
-                    </span>
-                  )}
-                  <span className="text-[9px] font-mono text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
-                    {realEvents.length}
+      {/* ── Phase Stepper Bar ── */}
+      <div className="shrink-0 px-5 py-2.5 border-b border-border/20 bg-card/10 backdrop-blur-sm">
+        <div className="max-w-4xl mx-auto flex items-center gap-1">
+          {PHASES.map((phase, idx) => {
+            const st = phaseStatuses[idx];
+            const isActive = activePhase === phase.id;
+            return (
+              <div key={phase.id} className="flex items-center flex-1 min-w-0">
+                <button
+                  onClick={() => { setActivePhase(phase.id); scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 w-full min-w-0 ${
+                    isActive
+                      ? st === "running"
+                        ? "bg-purple-500/15 border border-purple-500/30 ring-1 ring-purple-500/20"
+                        : st === "complete"
+                        ? "bg-emerald-500/10 border border-emerald-500/30 ring-1 ring-emerald-500/20"
+                        : "bg-primary/10 border border-primary/30 ring-1 ring-primary/20"
+                      : "bg-transparent border border-transparent hover:bg-muted/20"
+                  }`}
+                >
+                  {/* Step indicator */}
+                  <div
+                    className={`size-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold transition-all ${
+                      st === "complete"
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : st === "running"
+                        ? "bg-purple-500/20 text-purple-400"
+                        : st === "error"
+                        ? "bg-red-500/20 text-red-400"
+                        : isActive
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted/30 text-muted-foreground/50"
+                    }`}
+                  >
+                    {st === "complete" ? (
+                      <CheckCircle2 className="size-3.5" />
+                    ) : st === "running" ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      phase.id
+                    )}
+                  </div>
+                  <span
+                    className={`text-[11px] font-medium truncate ${
+                      isActive
+                        ? st === "running" ? "text-purple-300" : st === "complete" ? "text-emerald-300" : "text-foreground"
+                        : st === "complete" ? "text-emerald-400/70" : "text-muted-foreground/60"
+                    }`}
+                  >
+                    {phase.label}
                   </span>
+                </button>
+                {/* Connector line */}
+                {idx < PHASES.length - 1 && (
+                  <div className={`w-4 h-px shrink-0 mx-0.5 transition-colors ${
+                    st === "complete" ? "bg-emerald-500/40" : "bg-border/30"
+                  }`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Phase-Wise Content ── */}
+      <div className="flex-1 overflow-auto" ref={scrollRef}>
+        <div className="max-w-4xl mx-auto px-6 py-8">
+          <AnimatePresence mode="wait">
+
+          {/* ═══════ PHASE 1: Lead Ingestion ═══════ */}
+          {activePhase === 1 && (
+          <motion.div key="phase-1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+          <PhaseContainer
+            phaseNumber={1}
+            title="Lead Ingestion & Enrichment"
+            subtitle="Agent 1 — Accepts lead input, enriches via Apollo API, validates & deduplicates"
+            icon={<Users className="size-5" />}
+            status={phaseStatus([1], runs, currentAgent)}
+            accentColor="emerald"
+            integrations={["Apollo API"]}
+          >
+            {phaseStatus([1], runs, currentAgent) === "running" && (
+              <ThinkingIndicator label="Enriching lead data via Apollo…" />
+            )}
+            {phaseStatus([1], runs, currentAgent) === "complete" && (
+              <div className="space-y-4">
+                {/* Company Info */}
+                <OutcomeCard title="Company Profile">
+                  <div className="grid grid-cols-2 gap-x-6">
+                    <OutcomeRow icon={<Building2 className="size-3" />} label="Company" value={o1.companyName as string || "—"} accent="text-foreground" />
+                    <OutcomeRow icon={<Globe className="size-3" />} label="Domain" value={o1.companyDomain as string || "—"} mono />
+                    <OutcomeRow icon={<Users className="size-3" />} label="Size" value={o1.companySize as string || "—"} />
+                    <OutcomeRow icon={<Briefcase className="size-3" />} label="Industry" value={o1.industry as string || "—"} />
+                    <OutcomeRow icon={<DollarSign className="size-3" />} label="Funding" value={`${o1.fundingStage || "—"} ${o1.fundingAmount ? `(${o1.fundingAmount})` : ""}`} accent="text-emerald-400" />
+                    <OutcomeRow icon={<MapPin className="size-3" />} label="Headquarters" value={o1.headquarters as string || "—"} />
+                  </div>
+                </OutcomeCard>
+
+                {/* Contact Info */}
+                <OutcomeCard title="Contact Details">
+                  <div className="grid grid-cols-2 gap-x-6">
+                    <OutcomeRow icon={<User className="size-3" />} label="Name" value={o1.contactName as string || "—"} accent="text-foreground" />
+                    <OutcomeRow icon={<Briefcase className="size-3" />} label="Title" value={o1.contactTitle as string || "—"} />
+                    <OutcomeRow icon={<Mail className="size-3" />} label="Email" value={o1.contactEmail as string || "—"} mono accent="text-cyan-400" />
+                    <OutcomeRow icon={<Phone className="size-3" />} label="Phone" value={o1.contactPhone as string || "—"} mono />
+                    <OutcomeRow icon={<Linkedin className="size-3" />} label="LinkedIn" value={o1.contactLinkedIn as string || "—"} mono accent="text-blue-400" />
+                    <OutcomeRow icon={<Shield className="size-3" />} label="Seniority" value={o1.seniority as string || "—"} accent="text-purple-400" />
+                  </div>
+                </OutcomeCard>
+
+                {/* Tech Stack */}
+                {o1.techStack && (
+                  <OutcomeCard title="Tech Stack">
+                    <div className="flex flex-wrap gap-1.5">
+                      {(Array.isArray(o1.techStack) ? o1.techStack : (() => { try { return JSON.parse(o1.techStack as string); } catch { return []; } })()).map((t: string) => (
+                        <DataChip key={t} variant="cyan">
+                          <Code2 className="size-2.5" /> {t}
+                        </DataChip>
+                      ))}
+                    </div>
+                  </OutcomeCard>
+                )}
+
+                {/* Metrics */}
+                <div className="grid grid-cols-3 gap-3">
+                  <MetricTile label="Source" value={o1.source as string || "targeted"} icon={<Target className="size-4" />} />
+                  <MetricTile label="Seniority Level" value={o1.seniority as string || "—"} icon={<Shield className="size-4" />} />
+                  <MetricTile label="Funding Stage" value={o1.fundingStage as string || "—"} icon={<DollarSign className="size-4" />} accentColor="emerald" />
                 </div>
               </div>
-              <div className="h-[calc(100%-32px)]">
-                <ActivityLog events={events} />
-              </div>
-            </div>
+            )}
+          </PhaseContainer>
+          </motion.div>
+          )}
 
-            {/* Simulate Reply Panel */}
-            <div className="w-72 shrink-0 border-l border-border/40 p-3 flex flex-col justify-center bg-card/10">
+          {/* ═══════ PHASE 2: Intelligence Gathering (Agents 2, 3, 4 parallel) ═══════ */}
+          {activePhase === 2 && (
+          <motion.div key="phase-2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+          <PhaseContainer
+            phaseNumber={2}
+            title="Intelligence Gathering"
+            subtitle="Agents 2, 3, 4 — Signal scouting, intent scoring, and persona profiling run in parallel"
+            icon={<Radar className="size-5" />}
+            status={phaseStatus([2, 3, 4], runs, currentAgent)}
+            accentColor="purple"
+            integrations={["Tavily API", "LinkedIn"]}
+          >
+            {phaseStatus([2, 3, 4], runs, currentAgent) === "running" && (
+              <ThinkingIndicator label="Scanning signals, scoring intent, profiling persona…" />
+            )}
+            <div className="grid grid-cols-3 gap-4">
+              {/* Agent 2: Signal Scout */}
+              <AgentTile
+                name="Signal Scout"
+                status={agentStatus(runs, 2, currentAgent) === "complete" ? "complete" : agentStatus(runs, 2, currentAgent) === "running" ? "running" : "idle"}
+                icon={<Radar className="size-4" />}
+              >
+                {agentStatus(runs, 2, currentAgent) === "complete" && o2.signals && (
+                  <div className="space-y-2 mt-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-mono text-emerald-400">{(o2.signals as unknown[]).length} signals detected</span>
+                    </div>
+                    {(o2.signals as Array<Record<string, unknown>>).slice(0, 4).map((sig, i) => (
+                      <StreamItem key={i} delay={i * 0.1}>
+                        <div className="rounded-lg border border-border/15 bg-card/20 p-2.5 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <DataChip variant={sig.severity === "HIGH" || sig.relevance === "HIGH" ? "red" : sig.severity === "MEDIUM" || sig.relevance === "MEDIUM" ? "orange" : "default"}>
+                              {(sig.severity || sig.relevance || "—") as string}
+                            </DataChip>
+                            <DataChip variant="purple">{(sig.type || sig.classification || "signal") as string}</DataChip>
+                          </div>
+                          <p className="text-[10px] text-foreground/80 leading-relaxed">{(sig.title || sig.headline || "") as string}</p>
+                        </div>
+                      </StreamItem>
+                    ))}
+                  </div>
+                )}
+              </AgentTile>
+
+              {/* Agent 3: Intent Scorer */}
+              <AgentTile
+                name="Intent Scorer"
+                status={agentStatus(runs, 3, currentAgent) === "complete" ? "complete" : agentStatus(runs, 3, currentAgent) === "running" ? "running" : "idle"}
+                icon={<Target className="size-4" />}
+              >
+                {agentStatus(runs, 3, currentAgent) === "complete" && (
+                  <div className="space-y-3 mt-1">
+                    {/* Score Circle */}
+                    <div className="flex items-center gap-3">
+                      <div className="relative size-16">
+                        <svg className="size-16 -rotate-90" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/20" />
+                          <motion.circle
+                            cx="50" cy="50" r="40" fill="none" strokeWidth="6" strokeLinecap="round"
+                            className={
+                              (o3.tier || o3.priority) === "HOT" ? "stroke-red-400" :
+                              (o3.tier || o3.priority) === "WARM" ? "stroke-orange-400" : "stroke-cyan-400"
+                            }
+                            initial={{ strokeDasharray: "0 251" }}
+                            animate={{ strokeDasharray: `${((o3.compositeScore as number || o3.totalScore as number || 0) / 100) * 251} 251` }}
+                            transition={{ duration: 1.5, ease: "easeOut" }}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-lg font-bold font-mono">{(o3.compositeScore || o3.totalScore || 0) as number}</span>
+                          <span className="text-[8px] text-muted-foreground">/100</span>
+                        </div>
+                      </div>
+                      <div>
+                        <DataChip variant={(o3.tier || o3.priority) === "HOT" ? "red" : (o3.tier || o3.priority) === "WARM" ? "orange" : "cyan"}>
+                          {(o3.tier || o3.priority || "—") as string}
+                        </DataChip>
+                      </div>
+                    </div>
+
+                    {/* Top dimensions */}
+                    {(o3.dimensions as Array<Record<string, unknown>> || o3.topFactors as Array<Record<string, unknown>> || []).slice(0, 4).map((dim: Record<string, unknown>, i: number) => (
+                      <StreamItem key={i} delay={i * 0.08}>
+                        <ScoreBar
+                          label={(dim.name || dim.dimension || `Factor ${i + 1}`) as string}
+                          value={(dim.rawScore || dim.score || 0) as number}
+                          max={10}
+                          color={(o3.tier || o3.priority) === "HOT" ? "red" : "orange"}
+                        />
+                      </StreamItem>
+                    ))}
+                  </div>
+                )}
+              </AgentTile>
+
+              {/* Agent 4: Persona Analyst */}
+              <AgentTile
+                name="Persona Analyst"
+                status={agentStatus(runs, 4, currentAgent) === "complete" ? "complete" : agentStatus(runs, 4, currentAgent) === "running" ? "running" : "idle"}
+                icon={<Brain className="size-4" />}
+              >
+                {agentStatus(runs, 4, currentAgent) === "complete" && (
+                  <div className="space-y-2.5 mt-1">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-1">Archetype</p>
+                      <DataChip variant="purple">
+                        {((o4.archetype || "") as string).replace(/_/g, " ")}
+                      </DataChip>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground mb-1">Confidence</p>
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 flex-1 rounded-full bg-muted/20 overflow-hidden">
+                          <motion.div
+                            className="h-full rounded-full bg-purple-400"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${((o4.confidence as number || o4.confidenceScore as number || 0.85) * 100)}%` }}
+                            transition={{ duration: 0.8 }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-mono">{Math.round((o4.confidence as number || o4.confidenceScore as number || 0.85) * 100)}%</span>
+                      </div>
+                    </div>
+                    {o4.messagingGuidelines && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1">Recommended Tone</p>
+                        <p className="text-[11px] text-foreground/80">
+                          {((o4.messagingGuidelines as Record<string, string>)?.tone || "—")}
+                        </p>
+                      </div>
+                    )}
+                    {o4.traits && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1">Key Traits</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(o4.traits as string[]).slice(0, 3).map((t) => (
+                            <DataChip key={t}>{t}</DataChip>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </AgentTile>
+            </div>
+          </PhaseContainer>
+          </motion.div>
+          )}
+
+          {/* ═══════ PHASE 3: Strategy Brain ═══════ */}
+          {activePhase === 3 && (
+          <motion.div key="phase-3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+          <PhaseContainer
+            phaseNumber={3}
+            title="Strategy Commander"
+            subtitle="Agent 5 — The central decision brain. Decides channel, timing, tone, and full cadence"
+            icon={<Lightbulb className="size-5" />}
+            status={phaseStatus([5], runs, currentAgent)}
+            accentColor="blue"
+          >
+            {phaseStatus([5], runs, currentAgent) === "running" && (
+              <ThinkingIndicator label="Computing optimal outreach strategy…" />
+            )}
+            {phaseStatus([5], runs, currentAgent) === "complete" && (
+              <div className="space-y-4">
+                {/* Decision Cards Grid */}
+                <div className="grid grid-cols-4 gap-3">
+                  <MetricTile
+                    label="Primary Channel"
+                    value={((o5.primaryChannel || "—") as string).replace(/_/g, " ")}
+                    icon={<Send className="size-4" />}
+                    accentColor="cyan"
+                  />
+                  <MetricTile
+                    label="Tone Framework"
+                    value={((o5.approach || o5.toneFramework || "—") as string).replace(/_/g, " ")}
+                    icon={<Volume2 className="size-4" />}
+                    accentColor="purple"
+                  />
+                  <MetricTile
+                    label="Send Timing"
+                    value={o5.sendTimestamp ? new Date(o5.sendTimestamp as string).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Optimal"}
+                    sub={o5.timezone as string || ""}
+                    icon={<Clock className="size-4" />}
+                    accentColor="orange"
+                  />
+                  <MetricTile
+                    label="Cadence"
+                    value={`${(o5.cadence as unknown[])?.length || 3} touches`}
+                    sub={o5.secondaryChannel ? `+ ${(o5.secondaryChannel as string).replace(/_/g, " ")}` : ""}
+                    icon={<Calendar className="size-4" />}
+                    accentColor="emerald"
+                  />
+                </div>
+
+                {/* Cadence Timeline */}
+                {o5.cadence && (
+                  <OutcomeCard title="Cadence Schedule">
+                    <div className="flex items-center gap-2">
+                      {(o5.cadence as Array<Record<string, unknown>>).map((tp, i, arr) => (
+                        <div key={i} className="flex items-center gap-2 flex-1">
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.15 }}
+                            className="flex-1 rounded-lg border border-border/20 bg-card/20 p-3 text-center"
+                          >
+                            <p className="text-[10px] text-muted-foreground">Touch {(tp.touchNumber || i + 1) as number}</p>
+                            <p className="text-[12px] font-semibold mt-1">
+                              {((tp.channel || "") as string).replace(/_/g, " ")}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Day +{(tp.dayOffset || 0) as number}
+                            </p>
+                          </motion.div>
+                          {i < arr.length - 1 && (
+                            <ArrowRight className="size-3.5 text-muted-foreground/30 shrink-0" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </OutcomeCard>
+                )}
+
+                {/* Key Decisions */}
+                {o5.decisions && (
+                  <OutcomeCard title="Key Decisions">
+                    {(o5.decisions as Array<Record<string, string>>).map((d, i) => (
+                      <StreamItem key={i} delay={i * 0.1}>
+                        <div className="py-2 border-b border-border/10 last:border-0">
+                          <p className="text-[11px] font-medium text-foreground">{d.decision}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{d.reasoning}</p>
+                        </div>
+                      </StreamItem>
+                    ))}
+                  </OutcomeCard>
+                )}
+              </div>
+            )}
+          </PhaseContainer>
+          </motion.div>
+          )}
+
+          {/* ═══════ PHASE 4: Content Generation ═══════ */}
+          {activePhase === 4 && (
+          <motion.div key="phase-4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+          <PhaseContainer
+            phaseNumber={4}
+            title="Content Generation"
+            subtitle="Agent 6 — AI-crafted multi-touch outreach messages, LinkedIn posts, and headline suggestions"
+            icon={<FileText className="size-5" />}
+            status={phaseStatus([6], runs, currentAgent)}
+            accentColor="teal"
+            integrations={["Groq LLM", "Llama 3.3 70B"]}
+          >
+            {phaseStatus([6], runs, currentAgent) === "running" && (
+              <ThinkingIndicator label="Generating personalized outreach content…" />
+            )}
+            {phaseStatus([6], runs, currentAgent) === "complete" && o6.touches && (
+              <div className="space-y-4">
+                {/* Touch Cards */}
+                {(o6.touches as Array<Record<string, unknown>>).map((touch, i) => (
+                  <StreamItem key={i} delay={i * 0.2}>
+                    <OutcomeCard
+                      title={`Touch ${touch.touchNumber} — ${((touch.channel || "") as string).replace(/_/g, " ")}`}
+                    >
+                      {touch.subject && (
+                        <div className="mb-2 pb-2 border-b border-border/10">
+                          <span className="text-[10px] text-muted-foreground">Subject: </span>
+                          <span className="text-[11px] font-medium">{touch.subject as string}</span>
+                        </div>
+                      )}
+                      <div className="text-[11px] leading-relaxed font-mono text-foreground/80 whitespace-pre-wrap bg-background/30 rounded-lg p-3 border border-border/10">
+                        <StreamingText text={touch.body as string || ""} speed={5} showCursor={false} />
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <DataChip variant={touch.channel === "linkedin_dm" ? "cyan" : touch.channel === "email" ? "purple" : "emerald"}>
+                          {((touch.channel || "") as string).replace(/_/g, " ")}
+                        </DataChip>
+                        <span className="text-[9px] text-muted-foreground">
+                          {(touch.body as string || "").length} chars
+                        </span>
+                      </div>
+                    </OutcomeCard>
+                  </StreamItem>
+                ))}
+
+                {/* LinkedIn Post */}
+                {o6.linkedinPost && (
+                  <OutcomeCard title="LinkedIn Thought Leadership Post">
+                    <div className="text-[11px] leading-relaxed whitespace-pre-wrap bg-background/30 rounded-lg p-3 border border-border/10">
+                      <StreamingText text={o6.linkedinPost as string} speed={5} showCursor={false} />
+                    </div>
+                  </OutcomeCard>
+                )}
+
+                {/* Metrics */}
+                <div className="grid grid-cols-3 gap-3">
+                  <MetricTile label="Touches Generated" value={(o6.touches as unknown[]).length} icon={<MessageSquare className="size-4" />} />
+                  <MetricTile label="Channels Used" value={[...new Set((o6.touches as Array<Record<string, string>>).map((t) => t.channel))].length} icon={<Send className="size-4" />} />
+                  <MetricTile label="Total Content" value={`${(o6.touches as Array<Record<string, string>>).reduce((a, t) => a + (t.body?.length || 0), 0)} chars`} icon={<FileText className="size-4" />} />
+                </div>
+              </div>
+            )}
+          </PhaseContainer>
+          </motion.div>
+          )}
+
+          {/* ═══════ PHASE 5: Decision Trace ═══════ */}
+          {activePhase === 5 && (
+          <motion.div key="phase-5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+          <PhaseContainer
+            phaseNumber={5}
+            title="Decision Trace & Explainability"
+            subtitle="Agent 7 — Reads the full trace of every decision, generates plain-English rationale"
+            icon={<Eye className="size-5" />}
+            status={phaseStatus([7], runs, currentAgent)}
+            accentColor="yellow"
+          >
+            {phaseStatus([7], runs, currentAgent) === "running" && (
+              <ThinkingIndicator label="Tracing all agent decisions for explainability…" />
+            )}
+            {phaseStatus([7], runs, currentAgent) === "complete" && (
+              <div className="space-y-4">
+                {/* Summary */}
+                {o7.summary && (
+                  <OutcomeCard title="Executive Summary">
+                    <div className="text-[12px] leading-relaxed text-foreground/80">
+                      <StreamingText text={o7.summary as string} speed={8} showCursor={false} />
+                    </div>
+                  </OutcomeCard>
+                )}
+
+                {/* Rationale Items */}
+                {(o7.rationale || o7.explanations) && (
+                  <OutcomeCard title="Agent Decision Rationale">
+                    <div className="space-y-2.5">
+                      {((o7.rationale || o7.explanations) as Array<Record<string, unknown>>).map((item, i) => (
+                        <StreamItem key={i} delay={i * 0.1}>
+                          <div className="rounded-lg border border-border/15 bg-card/20 p-3 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <DataChip variant="purple">{(item.agent || item.agentName || `Agent ${i + 1}`) as string}</DataChip>
+                              {item.confidence && (
+                                <span className="text-[9px] font-mono text-emerald-400">
+                                  {Math.round((item.confidence as number) * 100)}% confident
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-medium text-foreground">{(item.decision || "") as string}</p>
+                            <p className="text-[10px] text-muted-foreground leading-relaxed">{(item.explanation || item.reasoning || "") as string}</p>
+                          </div>
+                        </StreamItem>
+                      ))}
+                    </div>
+                  </OutcomeCard>
+                )}
+              </div>
+            )}
+          </PhaseContainer>
+          </motion.div>
+          )}
+
+          {/* ═══════ PHASE 6: Delivery & Execution ═══════ */}
+          {activePhase === 6 && (
+          <motion.div key="phase-6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+          <PhaseContainer
+            phaseNumber={6}
+            title="Delivery & Execution"
+            subtitle="Agent 8 — Sends messages via selected platforms. Tracks delivery receipts"
+            icon={<Send className="size-5" />}
+            status={phaseStatus([8], runs, currentAgent)}
+            accentColor="emerald"
+            integrations={["HeyReach", "Resend", "AiSensy"]}
+          >
+            {phaseStatus([8], runs, currentAgent) === "running" && (
+              <ThinkingIndicator label="Dispatching outreach messages…" />
+            )}
+            {phaseStatus([8], runs, currentAgent) === "complete" && o8.results && (
+              <div className="space-y-4">
+                {/* Delivery Results */}
+                <div className="space-y-2.5">
+                  {(o8.results as Array<Record<string, unknown>>).map((result, i) => (
+                    <StreamItem key={i} delay={i * 0.15}>
+                      <div className="flex items-center gap-3 rounded-xl border border-border/20 bg-card/20 p-4">
+                        {/* Status Icon */}
+                        <div className={`size-9 rounded-lg flex items-center justify-center ${
+                          result.status === "sent" || result.status === "simulated"
+                            ? "bg-emerald-500/15"
+                            : result.status === "queued"
+                            ? "bg-orange-500/15"
+                            : "bg-red-500/15"
+                        }`}>
+                          {result.status === "sent" || result.status === "simulated" ? (
+                            <CheckCircle2 className="size-4 text-emerald-400" />
+                          ) : result.status === "queued" ? (
+                            <Clock className="size-4 text-orange-400" />
+                          ) : (
+                            <AlertTriangle className="size-4 text-red-400" />
+                          )}
+                        </div>
+                        {/* Details */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[12px] font-semibold">Touch {result.touch as number || result.touchNumber as number || i + 1}</span>
+                            <DataChip variant={result.channel === "linkedin_dm" ? "cyan" : result.channel === "email" ? "purple" : "emerald"}>
+                              {((result.channel || "") as string).replace(/_/g, " ")}
+                            </DataChip>
+                            <DataChip variant={
+                              result.status === "sent" || result.status === "simulated" ? "emerald" :
+                              result.status === "queued" ? "orange" : "red"
+                            }>
+                              {result.status as string}
+                            </DataChip>
+                          </div>
+                          {result.messageId && (
+                            <p className="text-[9px] font-mono text-muted-foreground mt-1">
+                              ID: {result.messageId as string}
+                            </p>
+                          )}
+                        </div>
+                        {/* Platform badge */}
+                        <span className="text-[9px] font-mono text-muted-foreground px-2 py-0.5 rounded border border-border/20 bg-muted/10">
+                          {result.channel === "linkedin_dm" ? "HeyReach" : result.channel === "email" ? "Resend" : "AiSensy"}
+                        </span>
+                      </div>
+                    </StreamItem>
+                  ))}
+                </div>
+
+                {/* Delivery Summary */}
+                <div className="grid grid-cols-3 gap-3">
+                  <MetricTile
+                    label="Sent"
+                    value={(o8.results as Array<Record<string, string>>).filter((r) => r.status === "sent" || r.status === "simulated").length}
+                    icon={<CheckCircle2 className="size-4" />}
+                    accentColor="emerald"
+                  />
+                  <MetricTile
+                    label="Queued"
+                    value={(o8.results as Array<Record<string, string>>).filter((r) => r.status === "queued").length}
+                    icon={<Clock className="size-4" />}
+                    accentColor="orange"
+                  />
+                  <MetricTile
+                    label="Failed"
+                    value={(o8.results as Array<Record<string, string>>).filter((r) => r.status === "failed").length}
+                    icon={<AlertTriangle className="size-4" />}
+                    accentColor="red"
+                  />
+                </div>
+              </div>
+            )}
+          </PhaseContainer>
+          </motion.div>
+          )}
+
+          {/* ═══════ PHASE 7: Monitor & Learn ═══════ */}
+          {activePhase === 7 && (
+          <motion.div key="phase-7" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }}>
+          <PhaseContainer
+            phaseNumber={7}
+            title="Response Monitor & Learning Loop"
+            subtitle="Agents 9 & 10 — Classifies response sentiment, then updates scoring weights for compounding improvement"
+            icon={<GraduationCap className="size-5" />}
+            status={phaseStatus([9, 10], runs, currentAgent)}
+            accentColor="orange"
+            isLast
+          >
+            {phaseStatus([9, 10], runs, currentAgent) === "running" && (
+              <ThinkingIndicator label="Monitoring for responses & updating model weights…" />
+            )}
+            {(agentStatus(runs, 9, currentAgent) === "complete" || agentStatus(runs, 10, currentAgent) === "complete") && (
+              <div className="space-y-4">
+                {/* Agent 9: Response Classification */}
+                {agentStatus(runs, 9, currentAgent) === "complete" && (
+                  <OutcomeCard title="Response Classification — Agent 9">
+                    <div className="flex items-center gap-3 mb-3">
+                      <DataChip variant={
+                        o9.sentiment === "positive" ? "emerald" :
+                        o9.sentiment === "negative" ? "red" :
+                        o9.sentiment === "neutral" ? "orange" : "default"
+                      }>
+                        {((o9.sentiment || "no_reply") as string).replace(/_/g, " ")}
+                      </DataChip>
+                      <ArrowRight className="size-3 text-muted-foreground/40" />
+                      <DataChip variant="purple">
+                        {((o9.action || "nurture") as string).replace(/_/g, " ")}
+                      </DataChip>
+                    </div>
+                    {o9.classificationReasoning && (
+                      <p className="text-[10px] text-muted-foreground leading-relaxed font-mono">
+                        {o9.classificationReasoning as string}
+                      </p>
+                    )}
+                  </OutcomeCard>
+                )}
+
+                {/* Agent 10: Learning Loop */}
+                {agentStatus(runs, 10, currentAgent) === "complete" && o10.weightUpdates && (
+                  <OutcomeCard title="Learning Loop — Agent 10">
+                    <div className="space-y-3">
+                      {/* Weight Updates */}
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider font-semibold">
+                          Scoring Weight Updates ({(o10.weightUpdates as unknown[]).length} dimensions)
+                        </p>
+                        <div className="space-y-1.5">
+                          {(o10.weightUpdates as Array<Record<string, unknown>>).map((wu, i) => (
+                            <StreamItem key={i} delay={i * 0.05}>
+                              <div className="flex items-center gap-2 py-1.5 border-b border-border/10 last:border-0">
+                                <span className="text-[10px] text-muted-foreground min-w-24">{wu.dimension as string}</span>
+                                <span className="text-[10px] font-mono text-foreground/60">{(wu.previousWeight as number)?.toFixed(2)}</span>
+                                <ArrowRight className="size-2.5 text-muted-foreground/40" />
+                                <span className={`text-[10px] font-mono font-semibold ${
+                                  (wu.delta as number) > 0 ? "text-emerald-400" : (wu.delta as number) < 0 ? "text-red-400" : "text-muted-foreground"
+                                }`}>
+                                  {(wu.newWeight as number)?.toFixed(2)}
+                                </span>
+                                <span className={`text-[9px] font-mono ${
+                                  (wu.delta as number) > 0 ? "text-emerald-400" : (wu.delta as number) < 0 ? "text-red-400" : "text-muted-foreground"
+                                }`}>
+                                  ({(wu.delta as number) > 0 ? "+" : ""}{(wu.delta as number)?.toFixed(3)})
+                                </span>
+                              </div>
+                            </StreamItem>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Heuristic Updates */}
+                      {o10.heuristicUpdates && (o10.heuristicUpdates as string[]).length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-semibold">
+                            Strategy Heuristic Updates
+                          </p>
+                          {(o10.heuristicUpdates as string[]).map((h, i) => (
+                            <StreamItem key={i} delay={i * 0.1}>
+                              <p className="text-[10px] text-foreground/80 py-1 flex items-start gap-1.5">
+                                <Sparkles className="size-2.5 text-purple-400 mt-0.5 shrink-0" /> {h}
+                              </p>
+                            </StreamItem>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Tone Rule Updates */}
+                      {o10.toneRuleUpdates && (o10.toneRuleUpdates as string[]).length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-semibold">
+                            Tone Rule Adjustments
+                          </p>
+                          {(o10.toneRuleUpdates as string[]).map((t, i) => (
+                            <StreamItem key={i} delay={i * 0.1}>
+                              <p className="text-[10px] text-foreground/80 py-1 flex items-start gap-1.5">
+                                <Volume2 className="size-2.5 text-orange-400 mt-0.5 shrink-0" /> {t}
+                              </p>
+                            </StreamItem>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </OutcomeCard>
+                )}
+
+                {/* Summary Metrics */}
+                <div className="grid grid-cols-3 gap-3">
+                  <MetricTile
+                    label="Sentiment"
+                    value={((o9.sentiment || "no_reply") as string).replace(/_/g, " ")}
+                    icon={<MessageSquare className="size-4" />}
+                    accentColor={o9.sentiment === "positive" ? "emerald" : o9.sentiment === "negative" ? "red" : "orange"}
+                  />
+                  <MetricTile
+                    label="Action"
+                    value={((o9.action || "nurture") as string).replace(/_/g, " ")}
+                    icon={<Zap className="size-4" />}
+                    accentColor="purple"
+                  />
+                  <MetricTile
+                    label="Weights Updated"
+                    value={(o10.weightUpdates as unknown[] || []).length}
+                    icon={<TrendingUp className="size-4" />}
+                    accentColor="cyan"
+                  />
+                </div>
+              </div>
+            )}
+          </PhaseContainer>
+
+          {/* ═══════ SIMULATE REPLY SECTION (on Phase 7) ═══════ */}
+          {showSimulate && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="mt-8 rounded-2xl border border-border/30 bg-card/20 backdrop-blur-sm p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="size-10 rounded-xl bg-purple-500/15 flex items-center justify-center">
+                  <MessageSquare className="size-5 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-semibold">Simulate a Response</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Test how Agent 9 classifies sentiment and Agent 10 updates the learning weights
+                  </p>
+                </div>
+              </div>
               <SimulateReply
                 leadId={id || ""}
                 channel={
-                  detail?.agentOutputs
-                    ? ((detail.agentOutputs as Record<string, Record<string, unknown>>)["5"]
-                        ?.primaryChannel as "email" | "linkedin_dm" | "whatsapp") || "email"
-                    : "email"
+                  (o5.primaryChannel as "email" | "linkedin_dm" | "whatsapp") || "email"
                 }
-                disabled={!pipelineComplete && !detail?.agentRuns?.some((r) => r.agentNumber === 8 && r.status === "complete")}
+                disabled={false}
                 onSent={() => {
-                  setTimeout(fetchDetail, 1000);
+                  setTimeout(fetchDetail, 1500);
                 }}
               />
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          )}
+          </motion.div>
+          )}
 
-        {/* Right Panel */}
-        <div className="w-80 shrink-0 border-l border-border/40 overflow-hidden bg-card/10 backdrop-blur-sm">
-          <RightPanel sseEvents={events} detail={detail} />
+          </AnimatePresence>
+
+          {/* ── Navigation Buttons ── */}
+          <div className="flex items-center justify-between mt-8 pb-8">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goPrev}
+              disabled={!canGoPrev}
+              className="gap-2 h-10 px-5 border-border/40 hover:bg-muted/20 disabled:opacity-30"
+            >
+              <ChevronLeft className="size-4" />
+              <span className="text-sm">Previous Phase</span>
+            </Button>
+
+            {/* Phase counter */}
+            <span className="text-xs text-muted-foreground font-mono">
+              Phase {activePhase} of 7
+            </span>
+
+            {activePhase < 7 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goNext}
+                className="gap-2 h-10 px-5 border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary"
+              >
+                <span className="text-sm">Next Phase</span>
+                <ChevronRight className="size-4" />
+              </Button>
+            ) : pipelineComplete ? (
+              <Link to="/dashboard">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 h-10 px-5 border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400"
+                >
+                  <CheckCircle2 className="size-4" />
+                  <span className="text-sm">Done — Back to Dashboard</span>
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="gap-2 h-10 px-5 border-border/40 disabled:opacity-30"
+              >
+                <span className="text-sm">Waiting…</span>
+                <Loader2 className="size-4 animate-spin" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
