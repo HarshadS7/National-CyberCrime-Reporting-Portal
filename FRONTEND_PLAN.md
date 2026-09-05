@@ -2,7 +2,10 @@
 
 **Date:** 5 September 2026
 **Source:** Audit of <https://cybercrime.gov.in/> (homepage, complaint entry, tracking, FAQ, State/UT contacts, suspect search, report suspect)
-**Scope:** Public-facing frontend rebuild — information architecture, UI, accessibility, responsiveness. Backend APIs, complaint processing, and security infrastructure are out of scope except where the frontend contract is defined.
+**Stack:** Next.js (App Router) · React · TypeScript · Tailwind CSS
+**Scope:** Greenfield public-facing frontend — information architecture, UI, accessibility, responsiveness. Backend APIs, complaint processing, and security infrastructure are out of scope except where the frontend contract is defined.
+
+The audit below is of the *existing* portal. Its findings are the requirements list for the new build, not a patch list for the old one.
 
 ---
 
