@@ -1,0 +1,200 @@
+{
+  "common": {
+    "skipToContent": "Skip to main content",
+    "siteName": "National Cyber Crime Reporting Portal",
+    "ministry": "Ministry of Home Affairs, Government of India",
+    "helplineLabel": "Lost money to fraud? Call 1930",
+    "helplineNumber": "1930",
+    "required": "required",
+    "continue": "Continue",
+    "back": "Back",
+    "submit": "Submit",
+    "search": "Search",
+    "loading": "Loading",
+    "contrastToggle": "High contrast",
+    "languageToggle": "Language"
+  },
+  "nav": {
+    "home": "Home",
+    "report": "Report an incident",
+    "track": "Track complaint",
+    "checkSuspect": "Check a suspect",
+    "reportSuspect": "Report a suspect",
+    "help": "Help",
+    "faq": "FAQ",
+    "contacts": "State/UT contacts",
+    "learn": "Learning corner",
+    "about": "About"
+  },
+  "home": {
+    "title": "What do you need?",
+    "intro": "Choose what happened. Every option leads to the right team.",
+    "alertTitle": "Beware of fake emails",
+    "alertBody": "Fake emails are being sent impersonating officials of I4C and related agencies. Government officers will never ask you for money, OTPs, or passwords.",
+    "tasks": {
+      "victim": {
+        "title": "I lost money or I am a victim",
+        "description": "Money taken from your account, a fraudulent transaction, or a scam call.",
+        "action": "Report an incident"
+      },
+      "harmfulContent": {
+        "title": "I need to report harmful content",
+        "description": "A fake profile using your photos, obscene material, or content involving women or children.",
+        "action": "Report content"
+      },
+      "check": {
+        "title": "I want to check a person or website",
+        "description": "See whether a phone number, email, website, or social media handle has been reported before.",
+        "action": "Check a suspect"
+      },
+      "track": {
+        "title": "I already reported",
+        "description": "Check the status of a complaint using your acknowledgement number.",
+        "action": "Track complaint"
+      },
+      "help": {
+        "title": "I need help",
+        "description": "Read answers to common questions or contact the cyber cell in your State or UT.",
+        "action": "Get help"
+      }
+    },
+    "hero": {
+      "eyebrow": "Government of India · Ministry of Home Affairs",
+      "title": "Report cybercrime. Get help fast.",
+      "subtitle": "Every complaint reaches the cyber cell for your State or Union Territory. Reporting is free, and you can report without giving your name.",
+      "primaryCta": "Report an incident",
+      "secondaryCta": "Track a complaint",
+      "helplineTitle": "Lost money in the last few hours?",
+      "helplineBody": "Call 1930 before you do anything else. Fast reporting is what makes it possible to freeze the money.",
+      "helplineCta": "Call 1930 now"
+    },
+    "tasksTitle": "Choose what happened",
+    "tasksIntro": "Each option takes you to the right team.",
+    "howTitle": "What happens after you report",
+    "how": {
+      "step1Title": "You file the complaint",
+      "step1Body": "Give what you know. You will receive an acknowledgement number — save it.",
+      "step2Title": "It reaches your State cyber cell",
+      "step2Body": "Your complaint is routed to the police unit that has jurisdiction over your area.",
+      "step3Title": "You track the progress",
+      "step3Body": "Use your acknowledgement number to check the status at any time."
+    },
+    "helpTitle": "Not sure where to start?",
+    "helpBody": "Read answers to common questions, or contact the cyber cell in your State or Union Territory directly.",
+    "helpFaqCta": "Read the FAQ",
+    "helpContactsCta": "Find my State officer"
+  },
+  "report": {
+    "title": "Report an incident",
+    "intro": "Choose the category that best describes what happened.",
+    "categories": {
+      "financialFraud": {
+        "title": "Financial fraud",
+        "description": "Money debited without consent, UPI or card fraud, investment or job scams."
+      },
+      "womenChildren": {
+        "title": "Crime against women or children",
+        "description": "Obscene content, sexual abuse material, harassment, or stalking."
+      },
+      "other": {
+        "title": "Other cyber crime",
+        "description": "Hacking, data theft, ransomware, fake profiles, or online abuse."
+      }
+    },
+    "urgentTitle": "If money was taken from your account",
+    "urgentBody": "Call 1930 immediately. The sooner you report, the higher the chance of freezing the funds.",
+    "anonymous": "Report anonymously",
+    "tracked": "Report and track"
+  },
+  "track": {
+    "title": "Track your complaint",
+    "intro": "You will need the acknowledgement number you received when you reported.",
+    "steps": {
+      "ack": "Enter acknowledgement number",
+      "otp": "Verify with OTP",
+      "result": "View status"
+    },
+    "stepLabel": "Step {current} of {total}",
+    "ackLabel": "Acknowledgement number",
+    "ackHint": "The number sent to you when you filed the complaint, for example 12345678901234.",
+    "requestOtp": "Send OTP to my registered mobile",
+    "otpSentStatus": "We sent a one-time password to the mobile number ending {last4}.",
+    "otpLabel": "One-time password",
+    "otpHint": "Six digits, valid for 10 minutes.",
+    "otpDisabledHint": "This field becomes available after you request an OTP.",
+    "resendOtp": "Send the OTP again",
+    "captchaLabel": "Verification code",
+    "captchaHint": "Type the characters shown in the image.",
+    "captchaRefresh": "Get a new verification image",
+    "captchaAudio": "Listen to the verification code",
+    "submit": "View complaint status",
+    "errors": {
+      "ackRequired": "Enter your acknowledgement number.",
+      "ackFormat": "The acknowledgement number should be 14 digits.",
+      "otpRequired": "Enter the six-digit OTP.",
+      "otpFormat": "The OTP should be six digits.",
+      "captchaRequired": "Enter the verification code.",
+      "notFound": "We could not find a complaint with that acknowledgement number."
+    }
+  },
+  "checkSuspect": {
+    "title": "Check a suspect",
+    "intro": "Search whether an identifier has been reported to the portal before. A result is not proof of a crime.",
+    "identifierLabel": "Phone number, email, or social media handle",
+    "identifierHint": "Enter one identifier at a time.",
+    "websiteLabel": "Website or app",
+    "websiteHint": "For example, example.com or the name of an app.",
+    "noResults": "No reports found for this identifier.",
+    "disclaimer": "The absence of a result does not mean an identifier is safe."
+  },
+  "reportSuspect": {
+    "title": "Report a suspect",
+    "intro": "Report an identifier you believe is being used for cyber crime.",
+    "victimTitle": "Are you a victim?",
+    "victimBody": "If you have lost money or suffered harm, file a complaint instead. Reporting a suspect alone does not start an investigation into your case.",
+    "victimAction": "Report an incident",
+    "typeLabel": "What are you reporting?",
+    "typeHint": "Choose the option closest to what you saw.",
+    "stateLabel": "Your State or Union Territory",
+    "stateHint": "This routes your report to the correct cyber cell."
+  },
+  "contacts": {
+    "title": "Cyber cell contacts by State and UT",
+    "intro": "Find the nodal cyber cell officer and grievance officer for your State or Union Territory.",
+    "selectLabel": "Select your State or Union Territory",
+    "filterLabel": "Filter States and UTs",
+    "nodalOfficer": "Nodal cyber cell officer",
+    "grievanceOfficer": "Grievance officer",
+    "phone": "Phone",
+    "email": "Email",
+    "copyEmail": "Copy email address",
+    "emailCopied": "Email address copied",
+    "escalationNote": "If you used Report and Track and are not satisfied with the response, you may escalate to your State or UT officer.",
+    "downloadPdf": "Download the full directory (PDF)",
+    "tableCaption": "Nodal cyber cell and grievance officers for every State and Union Territory"
+  },
+  "faq": {
+    "title": "Frequently asked questions",
+    "intro": "Search for a question or browse by topic.",
+    "searchLabel": "Search questions",
+    "searchHint": "For example, OTP, evidence, or withdraw.",
+    "resultCount": "{count, plural, =0 {No questions match} one {# question matches} other {# questions match}} your search.",
+    "clearSearch": "Clear search",
+    "topics": {
+      "reporting": "Reporting an incident",
+      "evidence": "Evidence and documents",
+      "account": "OTP and account access",
+      "tracking": "Tracking a complaint",
+      "withdrawal": "Withdrawing a complaint",
+      "safety": "Staying safe online"
+    }
+  },
+  "error": {
+    "title": "Something went wrong",
+    "body": "The page could not be loaded. Please try again.",
+    "retry": "Try again",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "The page you are looking for does not exist or has moved.",
+    "goHome": "Go to the home page"
+  }
+}

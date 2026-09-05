@@ -1,0 +1,248 @@
+@import "tailwindcss";
+
+/*
+ * Plan §6.4 — one token set. Colour, elevation, type live here and nowhere else.
+ *
+ * VISUAL LANGUAGE: neumorphism (soft UI).
+ * Surfaces share one base colour and are separated by paired shadows — a light
+ * source from the top-left, a shadow to the bottom-right — rather than by
+ * borders or contrasting fills.
+ *
+ * Soft UI is normally an accessibility problem: low-contrast surfaces and
+ * affordances you cannot see. Three rules keep it usable here, and they are
+ * not optional on a public-safety service:
+ *   1. TEXT contrast is never traded for softness — ink on base stays AA.
+ *   2. Safety-critical controls (1930, submit, destructive) keep a solid,
+ *      high-contrast fill. They are never shadow-only.
+ *   3. [data-contrast="high"] flattens every soft shadow to a real border.
+ */
+@theme {
+  /* The neumorphic base. Page and cards share this colour by design. */
+  --color-surface: #e9edf3;
+  --color-surface-raised: #eef1f6;
+  --color-surface-sunken: #e1e6ee;
+
+  --color-ink: #16233a;
+  --color-ink-muted: #4b5c75;
+  --color-ink-subtle: #6d7d95;
+
+  /* Borders are mostly unused in soft UI; kept for high-contrast mode. */
+  --color-border: #d2d9e4;
+  --color-border-strong: #b3bece;
+
+  --color-primary: #17457f;
+  --color-primary-hover: #103361;
+  --color-primary-soft: #dde6f4;
+  --color-primary-contrast: #ffffff;
+
+  --color-accent: #b35a0c;
+  --color-accent-soft: #f6e8d8;
+
+  /* Emergency / 1930 — always a solid fill, never shadow-only. */
+  --color-urgent: #a91f18;
+  --color-urgent-hover: #85160f;
+  --color-urgent-soft: #f5dedc;
+  --color-urgent-contrast: #ffffff;
+
+  --color-success: #126136;
+  --color-success-soft: #dceadf;
+  --color-warning: #7d5100;
+  --color-warning-soft: #f4ead6;
+  --color-danger: #a91f18;
+  --color-danger-soft: #f5dedc;
+  --color-info: #17457f;
+  --color-info-soft: #dde6f4;
+
+  --color-focus: #0b3ea8;
+
+  /* Neumorphic light and shade, derived from the base colour. */
+  --neu-light: #ffffff;
+  --neu-shade: #bcc5d4;
+
+  --shadow-neu:
+    6px 6px 14px var(--neu-shade), -6px -6px 14px var(--neu-light);
+  --shadow-neu-sm:
+    3px 3px 7px var(--neu-shade), -3px -3px 7px var(--neu-light);
+  --shadow-neu-lg:
+    10px 10px 26px var(--neu-shade), -10px -10px 26px var(--neu-light);
+  --shadow-neu-inset:
+    inset 4px 4px 9px var(--neu-shade), inset -4px -4px 9px var(--neu-light);
+  --shadow-neu-inset-sm:
+    inset 2px 2px 5px var(--neu-shade), inset -2px -2px 5px var(--neu-light);
+
+  --font-sans: "Noto Sans", "Noto Sans Devanagari", ui-sans-serif, system-ui,
+    -apple-system, sans-serif;
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem; /* larger base: public service, very wide audience */
+  --text-lg: 1.1875rem;
+  --text-xl: 1.4375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.125rem;
+  --text-4xl: 2.625rem;
+
+  /* Soft UI leans on generous radii. */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --radius-2xl: 2.25rem;
+
+  --spacing-touch: 2.75rem; /* WCAG 2.5.5 minimum touch target */
+}
+
+/*
+ * High contrast flattens soft UI completely: no extrusion, real borders,
+ * pure white surfaces. Toggling must not change layout.
+ */
+[data-contrast="high"] {
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #ffffff;
+  --color-ink: #000000;
+  --color-ink-muted: #1a1a1a;
+  --color-ink-subtle: #1a1a1a;
+  --color-border: #000000;
+  --color-border-strong: #000000;
+  --color-primary: #002b73;
+  --color-primary-hover: #001a4d;
+  --color-primary-soft: #ffffff;
+  --color-accent-soft: #ffffff;
+  --color-urgent: #8c0000;
+  --color-urgent-soft: #ffffff;
+  --color-success-soft: #ffffff;
+  --color-warning-soft: #ffffff;
+  --color-focus: #000000;
+
+  --shadow-neu: none;
+  --shadow-neu-sm: none;
+  --shadow-neu-lg: none;
+  --shadow-neu-inset: none;
+  --shadow-neu-inset-sm: none;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Plan §5 — focus stays a hard, visible ring. Soft UI never softens this. */
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+}
+
+@utility sr-only-focusable {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+
+  &:focus,
+  &:focus-visible {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+}
+
+/* --------------------------------------------------------- Soft UI surfaces */
+
+/** Extruded surface — cards, panels, nav bars. */
+@utility neu {
+  box-shadow: var(--shadow-neu);
+  background-color: var(--color-surface);
+}
+
+@utility neu-sm {
+  box-shadow: var(--shadow-neu-sm);
+  background-color: var(--color-surface);
+}
+
+@utility neu-lg {
+  box-shadow: var(--shadow-neu-lg);
+  background-color: var(--color-surface);
+}
+
+/** Debossed surface — inputs, wells, the pressed state. */
+@utility neu-inset {
+  box-shadow: var(--shadow-neu-inset);
+  background-color: var(--color-surface);
+}
+
+@utility neu-inset-sm {
+  box-shadow: var(--shadow-neu-inset-sm);
+  background-color: var(--color-surface);
+}
+
+/**
+ * Interactive extruded surface: lifts on hover, presses in on active.
+ * In high-contrast mode all three states fall back to a border.
+ */
+@utility neu-interactive {
+  box-shadow: var(--shadow-neu);
+  background-color: var(--color-surface);
+  transition:
+    box-shadow 200ms ease,
+    transform 200ms ease;
+
+  &:hover {
+    box-shadow: var(--shadow-neu-lg);
+  }
+
+  &:active {
+    box-shadow: var(--shadow-neu-inset);
+  }
+}
+
+[data-contrast="high"] .neu,
+[data-contrast="high"] .neu-sm,
+[data-contrast="high"] .neu-lg,
+[data-contrast="high"] .neu-inset,
+[data-contrast="high"] .neu-inset-sm,
+[data-contrast="high"] .neu-interactive {
+  border: 2px solid var(--color-border);
+}

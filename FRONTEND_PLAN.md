@@ -147,11 +147,67 @@ Target: **WCAG 2.1 AA**, aligned with GIGW (Guidelines for Indian Government Web
 
 ## 6. Technical approach
 
-- **Rendering**: server-rendered pages with progressive enhancement. Core journeys — report, track, check — must work with JavaScript disabled or failed. This is a public-safety service on unreliable networks.
-- **Migration**: strangler pattern. New routes are built alongside the existing WebForms pages and cut over one journey at a time. Start with `/track` (smallest surface, highest P1 density), then `/help/contacts`, then `/report`.
-- **Performance budget**: LCP < 2.5s on 3G, total JS < 150KB gzipped on the critical path. Current campaign imagery is a primary offender — compress and lazy-load below-fold media.
-- **i18n**: externalise all strings from the first commit, even while shipping only Hindi and English.
-- **Design system**: one token set (colour, type, spacing), one button hierarchy (primary / secondary / tertiary / destructive), one form-field component carrying label, hint, error, and ARIA wiring by construction.
+### 6.1 Stack decisions
+
+| Concern | Choice | Rationale |
+|---|---|---|
+| Framework | **Next.js, App Router** | Server Components keep client JS off the critical path; Server Actions give forms that work without JS. |
+| Language | **TypeScript, strict** | Complaint and contact data shapes are the core domain; type them once. |
+| Styling | **Tailwind CSS v4** | Design tokens as CSS variables in `@theme`; no runtime CSS-in-JS cost. |
+| Components | **Radix UI primitives** | Accordion, Select, Dialog, Tabs ship with correct ARIA and keyboard handling. Do not hand-roll these — the P1 findings are exactly what hand-rolling produces. |
+| Forms | **Server Actions + `useActionState`**, Zod for schemas | Same validation schema runs on server and client. |
+| i18n | **next-intl** with `/[locale]` segment routing | Locale in the URL, so pages stay shareable and cacheable. |
+| Testing | Vitest, Playwright, `@axe-core/playwright` | Accessibility assertions run in CI, not as a manual afterthought. |
+
+### 6.2 Progressive enhancement — non-negotiable
+
+This is a public-safety service used on unreliable networks and low-end devices. Report, track, and check must complete with JavaScript disabled or failed.
+
+- Every form is a real `<form action={serverAction}>`. It posts and works without hydration; JS only upgrades it with inline validation and live status.
+- Every navigation is a real `<Link href>` resolving to a real URL. No `javascript:` hrefs, no `#` placeholders — the P1-5 finding is a hard lint rule.
+- Client Components only where interaction genuinely requires them: FAQ search, State/UT filter, OTP timer, CAPTCHA refresh. Default to Server Components everywhere else.
+- Multi-step flows (`/track`, `/report`) use URL-addressable steps, not client-only state, so a step is linkable and survives a refresh.
+
+### 6.3 Project structure
+
+```text
+app/
+  [locale]/
+    layout.tsx                 Skip link, <main>, header, emergency 1930 strip
+    page.tsx                   Task chooser
+    report/                    page.tsx + [category]/
+    track/                     step-addressable: ?step=ack|otp|verify
+    check-suspect/
+    report-suspect/
+    help/faq/  help/contacts/  learn/
+    about/
+components/
+  ui/                          Button, Field, Select, Alert — the design system
+  patterns/                    TaskCard, ContactCard, StepIndicator, CaptchaField
+lib/
+  schemas/                     Zod schemas shared client/server
+  api/                         Backend client, typed
+messages/                      en.json, hi.json, …
+```
+
+### 6.4 Design system
+
+**Visual language: neumorphism (soft UI).** Surfaces share one base colour and are separated by paired shadows — light from the top-left, shade to the bottom-right — rather than by borders or contrasting fills. Soft UI is normally an accessibility liability, so three rules are binding on this codebase:
+
+1. Text contrast is never traded for softness — ink on base stays AA.
+2. Safety-critical controls (1930, submit, destructive) keep a solid high-contrast fill. They are never shadow-only. `Button`'s shadow-only `secondary` variant is therefore never the sole route through a task.
+3. `[data-contrast="high"]` flattens every soft shadow to a real border and pure-white surfaces. Verified: the whole page renders as flat bordered boxes.
+
+- **Tokens** in `@theme`: colour, type scale, spacing, radii, and the neumorphic shadow set (`--shadow-neu`, `-inset`, `-sm`, `-lg`). High-contrast mode is a token override on a `data-contrast="high"` root attribute, not a separate stylesheet.
+- **One button hierarchy**: primary / secondary / tertiary / destructive. A `Button` component with variants — no ad-hoc Tailwind button classes in pages.
+- **One `Field` component** carrying label, hint, error, and `aria-describedby` wiring by construction. It must be *impossible* to render an unlabelled input through it. This structurally eliminates P1-6, P1-7, and P2-9.
+- Tailwind is for layout and composition in pages; recurring visual decisions live in components, not repeated utility strings.
+
+### 6.5 Performance
+
+- Budget: **LCP < 2.5s on throttled 3G**, **< 150KB gzipped JS** on the critical path. Enforced in CI via Lighthouse.
+- `next/image` for all imagery, with explicit dimensions. Campaign media is below-fold and lazy — it never competes with the task chooser for LCP.
+- `next/font` with `display: swap` for Latin and Devanagari subsets.
 
 ---
 
@@ -159,14 +215,18 @@ Target: **WCAG 2.1 AA**, aligned with GIGW (Guidelines for Indian Government Web
 
 | Phase | Work | Exit criteria |
 |---|---|---|
-| **0 — Stabilise** | Fix JS errors (P0-1). Add alt text and accessible names (P1-6). Replace `javascript:` links (P1-5). | Zero console errors on public pages; automated axe scan passes on homepage. |
-| **1 — Track journey** | Rebuild `/track` with the 3-step flow. Accessible CAPTCHA (P0-2). | Journey completable by keyboard and screen reader end-to-end. |
-| **2 — Contacts** | State-first lookup, mobile contact card (P1-8). | No horizontal scroll at 360px; contact reachable in ≤3 taps. |
-| **3 — Homepage + IA** | Task chooser, 1930 strip, nav restructure (P1-3, P1-4). | Task chooser fully visible above the fold at 360×640. |
-| **4 — Report + suspect** | Reordered flows, split check/report, labelled inputs (P1-7, P2-9, P2-11). | All fields labelled; report type precedes State. |
-| **5 — Help + polish** | Searchable FAQ, design system rollout, copy pass, i18n scaffolding (P2-10, P2-12, P3-13). | FAQ searchable; one button hierarchy across all pages. |
+| **0 — Foundations** | Next.js + TS + Tailwind scaffold. Tokens, `Button`, `Field`, `Alert`. Root layout with skip link, `<main>`, 1930 strip. next-intl wiring with `en` + `hi`. CI: typecheck, lint, axe, Lighthouse. | `Field` cannot render without a label. Axe and Lighthouse gates fail the build when breached. |
+| **1 — Track journey** | `/track` with URL-addressable 3-step flow. Accessible CAPTCHA (P0-2). Server Action + Zod validation. | Completable by keyboard and screen reader, and with JS disabled. |
+| **2 — Contacts** | `/help/contacts` — State-first lookup, mobile contact card, real `mailto:`/`tel:` links (P1-8). | No horizontal scroll at 360px; contact reachable in ≤3 taps. |
+| **3 — Homepage + IA** | Task chooser, security alert, nav restructure (P1-3, P1-4). | Task chooser fully visible above the fold at 360×640. |
+| **4 — Report + suspect** | `/report` category flows; split check/report suspect; report type before State (P1-7, P2-9, P2-11). | All fields labelled; report type precedes State; forms post without JS. |
+| **5 — Help + polish** | Searchable FAQ, `/learn`, `/about`, copy pass, additional locales (P2-10, P2-12, P3-13). | FAQ searchable and anchor-linkable; one button hierarchy across all pages. |
 
-Each phase ships independently. No phase depends on a later one.
+Each phase ships independently. No phase depends on a later one. Phase 0 is the only prerequisite — the design system is what makes the accessibility findings unrepeatable rather than repeatedly fixed.
+
+### Backend dependency
+
+The frontend needs a typed contract for: complaint submission, tracking lookup + OTP issue/verify, suspect search, suspect report, and the State/UT directory. Phases 1–4 each block on their endpoint. Agree these contracts during Phase 0 and stub them with MSW so frontend work proceeds in parallel.
 
 ---
 
@@ -174,7 +234,7 @@ Each phase ships independently. No phase depends on a later one.
 
 A build is done when:
 
-1. Zero JavaScript console errors on all public pages.
+1. Zero JavaScript console errors and zero hydration mismatches on all public pages.
 2. Automated accessibility scan (axe) passes with no critical or serious violations.
 3. Manual screen-reader walkthrough of report, track, and check journeys completes without a blocker.
 4. Every journey is completable using keyboard only.
