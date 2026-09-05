@@ -21,6 +21,9 @@
   --color-surface: #e9edf3;
   --color-surface-raised: #eef1f6;
   --color-surface-sunken: #e1e6ee;
+  /* Deeper than the page base — used for the footer so it reads as a
+     distinct plane behind the content that ShrinkingFooter lifts away. */
+  --color-surface-deep: #d4dbe6;
 
   --color-ink: #16233a;
   --color-ink-muted: #4b5c75;
@@ -58,6 +61,11 @@
   /* Neumorphic light and shade, derived from the base colour. */
   --neu-light: #ffffff;
   --neu-shade: #bcc5d4;
+  /* Paired light/shade for the deeper footer plane — same formula, shifted
+     one step darker so the footer's extrusion reads correctly against its
+     own darker base rather than the page's. */
+  --neu-light-deep: #eef1f6;
+  --neu-shade-deep: #b0b9c8;
 
   --shadow-neu:
     6px 6px 14px var(--neu-shade), -6px -6px 14px var(--neu-light);
@@ -69,6 +77,9 @@
     inset 4px 4px 9px var(--neu-shade), inset -4px -4px 9px var(--neu-light);
   --shadow-neu-inset-sm:
     inset 2px 2px 5px var(--neu-shade), inset -2px -2px 5px var(--neu-light);
+  --shadow-neu-deep-inset:
+    inset 4px 4px 10px var(--neu-shade-deep),
+    inset -4px -4px 10px var(--neu-light-deep);
 
   --font-sans: "Noto Sans", "Noto Sans Devanagari", ui-sans-serif, system-ui,
     -apple-system, sans-serif;
@@ -100,6 +111,7 @@
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #ffffff;
+  --color-surface-deep: #ffffff;
   --color-ink: #000000;
   --color-ink-muted: #1a1a1a;
   --color-ink-subtle: #1a1a1a;
@@ -120,6 +132,7 @@
   --shadow-neu-lg: none;
   --shadow-neu-inset: none;
   --shadow-neu-inset-sm: none;
+  --shadow-neu-deep-inset: none;
 }
 
 @layer base {
@@ -218,6 +231,12 @@
   background-color: var(--color-surface);
 }
 
+/** Debossed well on the deeper footer plane — see --color-surface-deep. */
+@utility neu-deep-inset {
+  box-shadow: var(--shadow-neu-deep-inset);
+  background-color: var(--color-surface-deep);
+}
+
 /**
  * Interactive extruded surface: lifts on hover, presses in on active.
  * In high-contrast mode all three states fall back to a border.
@@ -243,6 +262,7 @@
 [data-contrast="high"] .neu-lg,
 [data-contrast="high"] .neu-inset,
 [data-contrast="high"] .neu-inset-sm,
+[data-contrast="high"] .neu-deep-inset,
 [data-contrast="high"] .neu-interactive {
   border: 2px solid var(--color-border);
 }

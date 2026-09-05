@@ -3,79 +3,58 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Field, controlClassName } from "@/components/ui/Field";
+import { generateDemoCaptcha, type DemoCaptcha } from "@/lib/demo-captcha";
 
 /**
  * Plan P0-2 — the audited portal used an image-only CAPTCHA with an unlabelled
  * refresh control, which blocks screen-reader users from tracking a complaint.
  *
- * This component fixes the labelling and provides an audio alternative, but the
- * image challenge itself is a placeholder. Phase 1 must replace it with a
- * challenge agreed with the platform and security teams.
+ * This component fixes the labelling but the challenge itself is DEMO MODE: it
+ * renders a fake code and verifies nothing server-side (see lib/demo-captcha).
+ * Phase 1 must replace it with a challenge agreed with the platform and
+ * security teams before launch.
  *
- * TODO(phase-1): swap the image challenge. Options to evaluate:
- *   - an invisible/risk-based challenge with an accessible fallback
- *   - a server-issued audio + image pair (implemented here as the interim)
- * Do not ship the image-only path.
+ * `initial` must come from the server (a Server Component calling
+ * generateDemoCaptcha() at request time) so the first paint matches between
+ * server and client. Only the refresh button regenerates client-side.
  */
 export interface CaptchaFieldProps {
-  /** Server-issued challenge id, submitted alongside the answer. */
-  challengeId: string;
-  imageUrl: string;
-  audioUrl?: string;
+  initial: DemoCaptcha;
   error?: string;
-  onRefresh?: () => void;
 }
 
-export function CaptchaField({
-  challengeId,
-  imageUrl,
-  audioUrl,
-  error,
-  onRefresh,
-}: CaptchaFieldProps) {
+export function CaptchaField({ initial, error }: CaptchaFieldProps) {
   const t = useTranslations("track");
-  const [cacheBust, setCacheBust] = useState(0);
+  const [captcha, setCaptcha] = useState(initial);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         {/*
           alt is empty by design: the image content is the challenge itself and
-          must not be exposed as text. The accessible path is the audio
-          alternative and the labelled input below.
+          must not be exposed as text. The accessible path is the labelled
+          input below — this demo has no audio alternative yet.
         */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={`${imageUrl}?v=${cacheBust}`}
+          src={captcha.imageDataUri}
           alt=""
           width={160}
           height={56}
-          className="rounded-md border border-border"
+          className="neu-inset-sm rounded-md"
         />
 
         <button
           type="button"
-          onClick={() => {
-            setCacheBust((value) => value + 1);
-            onRefresh?.();
-          }}
-          className="inline-flex min-h-(--spacing-touch) items-center rounded-md border border-border px-3 text-primary"
+          onClick={() => setCaptcha(generateDemoCaptcha())}
+          className="neu-interactive inline-flex min-h-(--spacing-touch) items-center rounded-md px-3 text-primary"
         >
           {/* Accessible name, not an icon alone (audit finding P0-2). */}
           {t("captchaRefresh")}
         </button>
-
-        {audioUrl && (
-          <a
-            href={audioUrl}
-            className="inline-flex min-h-(--spacing-touch) items-center text-primary underline underline-offset-4"
-          >
-            {t("captchaAudio")}
-          </a>
-        )}
       </div>
 
-      <input type="hidden" name="challengeId" value={challengeId} />
+      <input type="hidden" name="challengeId" value={captcha.challengeId} />
 
       <Field
         label={t("captchaLabel")}

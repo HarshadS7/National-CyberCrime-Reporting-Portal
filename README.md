@@ -48,6 +48,11 @@ These exist because they are the audit findings the rebuild is meant to fix.
    and are never shadow-only; and `[data-contrast="high"]` flattens every soft
    shadow to a real border.
 7. **Every image needs `alt`.** Empty `alt=""` only when genuinely decorative.
+8. **Nothing inside `ShrinkingFooter` may be `position: fixed`.** That wrapper
+   carries a transform, which makes it the containing block for fixed
+   descendants — they would anchor to the wrapper instead of the viewport. This
+   matters for the Phase 3 mobile menu: keep Radix's default portal-to-body
+   behaviour rather than rendering the overlay inline.
 
 ## Layout
 
@@ -64,20 +69,45 @@ messages/                en.json, hi.json — keys must stay in parity
 e2e/                     Playwright, incl. the axe gate
 ```
 
-## Known gaps
+## Demo mode
 
-- **Backend is stubbed.** `src/lib/api/client.ts` throws `NotImplementedError`
-  until `API_BASE_URL` is set and the bodies are implemented. Signatures are the
-  agreed contract — replace implementations, not signatures. See plan §7.
-- **CAPTCHA is a placeholder.** `CaptchaField` fixes the labelling and adds an
-  audio alternative, but the image challenge itself must be replaced in Phase 1
-  with something agreed with the platform and security teams (finding P0-2).
-  Do not ship the image-only path.
-- **State/UT officer details are empty.** `src/lib/data/state-contacts.ts` has
-  all 36 States and UTs, but names, phones, and emails are deliberately blank —
-  they must be transcribed from the official directory or served by the API.
-  These are real public officials; do not invent values.
+Every page is functionally complete against **fake, in-memory data** — there is
+no backend yet (plan §7). This is deliberate: it lets the whole citizen journey
+be reviewed and clicked through before the real API exists.
+
+| Journey | Try it with |
+|---|---|
+| Track a complaint | Acknowledgement number `12345678901234` or `98765432109876`, OTP `123456` |
+| Check a suspect | `9876543210`, `scam-support@example.com`, or `quick-loan-app.example` |
+| Report a suspect | Any identifier + any State — always "succeeds" |
+| Report an incident | Any category, Report and track or Report anonymously — always "succeeds" |
+| State/UT contacts | Any State — returns sample officer data, clearly labelled |
+
+The CAPTCHA on every page is also fake (`src/lib/demo-captcha.ts`): it renders
+a code as an inline SVG and accepts any non-empty answer. It exists so forms
+are visually and structurally complete, not as a security control.
+
+**None of this ships to production as-is.** Before launch:
+
+- **Replace `src/lib/api/client.ts`.** Every exported function is a fake
+  implementation with a `DEMO MODE` comment. Signatures are the agreed
+  contract — replace bodies, not signatures.
+- **Replace the CAPTCHA.** `CaptchaField` fixes the labelling (finding P0-2)
+  but the challenge itself must be agreed with the platform and security
+  teams. Do not ship the image-only demo path.
+- **Replace `src/lib/data/state-contacts.ts`.** All 36 States/UTs are present
+  and correctly named, but officer names, phones, and emails are SAMPLE DATA —
+  not real officials, on a deliberately non-resolving email domain
+  (`cybercell.sample.example`). Transcribe the real directory from
+  <https://cybercrime.gov.in/Webform/Crime_NodalGrivanceList.aspx> or serve it
+  from the API. These represent real public officials; do not invent values in
+  the replacement.
 - **Hindi translations need review** by a fluent speaker before release.
+- **Scroll-reveal footer.** `ShrinkingFooter` scales and lifts the page content
+  near the bottom to expose the fixed `SiteFooter` behind it. The footer is
+  rendered *after* the content in the DOM so keyboard order stays
+  header → main → footer; it sits behind purely via `z-0` against the content's
+  `z-10`. It disables itself under `prefers-reduced-motion`.
 - **Mobile navigation menu** is not built yet (Phase 3). The nav is currently a
   single horizontally-scrolling row on small screens; a wrapped nav consumed the
   whole 360×640 viewport.

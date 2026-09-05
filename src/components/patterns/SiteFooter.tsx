@@ -18,8 +18,8 @@ export function SiteFooter() {
   ] as const;
 
   return (
-    <footer className="mt-20 px-4 pb-10">
-      <div className="neu-inset mx-auto max-w-6xl rounded-xl px-6 py-10">
+    <footer className="px-4 pb-8 pt-4">
+      <div className="neu-deep-inset mx-auto max-w-6xl rounded-xl px-6 py-10">
         <div className="flex flex-wrap items-start justify-between gap-8">
           <div>
             <p className="font-bold text-ink">{tc("siteName")}</p>

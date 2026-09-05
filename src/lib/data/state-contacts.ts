@@ -1,67 +1,76 @@
 import type { StateContact } from "@/lib/types";
 
 /**
- * Plan P1-8 — the State/UT directory.
+ * DEMO MODE — see README "Known gaps".
  *
- * The 28 States and 8 Union Territories below are complete and correct.
- * Officer names, ranks, phone numbers, and email addresses are NOT populated:
- * they must be transcribed from the official directory at
- * https://cybercrime.gov.in/Webform/Crime_NodalGrivanceList.aspx
- * or supplied by the API. Do not invent them — these are real public officials
- * and citizens will act on this data.
+ * The 28 States and 8 Union Territories below are real and complete. The
+ * officer names, ranks, phone numbers, and emails are SAMPLE DATA for design
+ * review: they are not real officials, and the email domain
+ * ("cybercell.sample.example") deliberately does not resolve, so it cannot be
+ * mistaken for a genuine government address.
  *
- * When transcribing, store plain email addresses. The source page obfuscates
- * them as "[at]" / "[dot]"; that obfuscation is stripped here so mailto: and
- * screen readers work (see ContactCard).
+ * Before launch this file must be replaced with data transcribed from
+ * https://cybercrime.gov.in/Webform/Crime_NodalGrivanceList.aspx or served by
+ * the API — do not ship sample data to production.
  */
-function pending(state: string, slug: string): StateContact {
+function sample(state: string, slug: string): StateContact {
   return {
     slug,
     state,
-    nodalOfficer: { name: "" },
+    nodalOfficer: {
+      name: "Sample Nodal Officer",
+      rank: "Deputy Superintendent of Police, Cyber Cell",
+      phone: "1800 000 0000",
+      email: `nodal.${slug}@cybercell.sample.example`,
+    },
+    grievanceOfficer: {
+      name: "Sample Grievance Officer",
+      rank: "Grievance Cell",
+      email: `grievance.${slug}@cybercell.sample.example`,
+    },
   };
 }
 
 export const stateContacts: StateContact[] = [
-  pending("Andhra Pradesh", "andhra-pradesh"),
-  pending("Arunachal Pradesh", "arunachal-pradesh"),
-  pending("Assam", "assam"),
-  pending("Bihar", "bihar"),
-  pending("Chhattisgarh", "chhattisgarh"),
-  pending("Goa", "goa"),
-  pending("Gujarat", "gujarat"),
-  pending("Haryana", "haryana"),
-  pending("Himachal Pradesh", "himachal-pradesh"),
-  pending("Jharkhand", "jharkhand"),
-  pending("Karnataka", "karnataka"),
-  pending("Kerala", "kerala"),
-  pending("Madhya Pradesh", "madhya-pradesh"),
-  pending("Maharashtra", "maharashtra"),
-  pending("Manipur", "manipur"),
-  pending("Meghalaya", "meghalaya"),
-  pending("Mizoram", "mizoram"),
-  pending("Nagaland", "nagaland"),
-  pending("Odisha", "odisha"),
-  pending("Punjab", "punjab"),
-  pending("Rajasthan", "rajasthan"),
-  pending("Sikkim", "sikkim"),
-  pending("Tamil Nadu", "tamil-nadu"),
-  pending("Telangana", "telangana"),
-  pending("Tripura", "tripura"),
-  pending("Uttar Pradesh", "uttar-pradesh"),
-  pending("Uttarakhand", "uttarakhand"),
-  pending("West Bengal", "west-bengal"),
-  pending("Andaman and Nicobar Islands", "andaman-and-nicobar-islands"),
-  pending("Chandigarh", "chandigarh"),
-  pending(
+  sample("Andhra Pradesh", "andhra-pradesh"),
+  sample("Arunachal Pradesh", "arunachal-pradesh"),
+  sample("Assam", "assam"),
+  sample("Bihar", "bihar"),
+  sample("Chhattisgarh", "chhattisgarh"),
+  sample("Goa", "goa"),
+  sample("Gujarat", "gujarat"),
+  sample("Haryana", "haryana"),
+  sample("Himachal Pradesh", "himachal-pradesh"),
+  sample("Jharkhand", "jharkhand"),
+  sample("Karnataka", "karnataka"),
+  sample("Kerala", "kerala"),
+  sample("Madhya Pradesh", "madhya-pradesh"),
+  sample("Maharashtra", "maharashtra"),
+  sample("Manipur", "manipur"),
+  sample("Meghalaya", "meghalaya"),
+  sample("Mizoram", "mizoram"),
+  sample("Nagaland", "nagaland"),
+  sample("Odisha", "odisha"),
+  sample("Punjab", "punjab"),
+  sample("Rajasthan", "rajasthan"),
+  sample("Sikkim", "sikkim"),
+  sample("Tamil Nadu", "tamil-nadu"),
+  sample("Telangana", "telangana"),
+  sample("Tripura", "tripura"),
+  sample("Uttar Pradesh", "uttar-pradesh"),
+  sample("Uttarakhand", "uttarakhand"),
+  sample("West Bengal", "west-bengal"),
+  sample("Andaman and Nicobar Islands", "andaman-and-nicobar-islands"),
+  sample("Chandigarh", "chandigarh"),
+  sample(
     "Dadra and Nagar Haveli and Daman and Diu",
     "dadra-and-nagar-haveli-and-daman-and-diu",
   ),
-  pending("Delhi", "delhi"),
-  pending("Jammu and Kashmir", "jammu-and-kashmir"),
-  pending("Ladakh", "ladakh"),
-  pending("Lakshadweep", "lakshadweep"),
-  pending("Puducherry", "puducherry"),
+  sample("Delhi", "delhi"),
+  sample("Jammu and Kashmir", "jammu-and-kashmir"),
+  sample("Ladakh", "ladakh"),
+  sample("Lakshadweep", "lakshadweep"),
+  sample("Puducherry", "puducherry"),
 ];
 
 export function findStateContact(slug: string): StateContact | undefined {

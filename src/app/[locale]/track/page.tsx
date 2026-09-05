@@ -2,28 +2,31 @@ import { useTranslations } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { use } from "react";
 import { StepIndicator } from "@/components/patterns/StepIndicator";
+import { generateDemoCaptcha } from "@/lib/demo-captcha";
 import { AckStepForm } from "./AckStepForm";
+import { OtpStep } from "./OtpStep";
 
 /**
  * Plan P1-7 / Phase 1.
  *
- * Steps are addressable via ?step= so a refresh does not destroy progress and
- * a step is linkable. State lives in the URL, not in client memory.
+ * Step 1 -> 2 is a real navigation (ack/mobile travel via the URL query, set
+ * by a redirect() in actions.ts) so the OTP step is refreshable and linkable.
+ * Step 2 -> 3 (verify) renders inline once the server action returns a
+ * result, since a "result" screen isn't a meaningfully distinct URL here.
  */
 export default function TrackPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ step?: string }>;
+  searchParams: Promise<{ step?: string; ack?: string; mobile?: string }>;
 }) {
   const { locale } = use(params);
   setRequestLocale(locale);
-  const { step } = use(searchParams);
+  const { step, ack, mobile } = use(searchParams);
 
   const t = useTranslations("track");
   const steps = [t("steps.ack"), t("steps.otp"), t("steps.result")] as const;
-  const current = step === "otp" ? 2 : step === "result" ? 3 : 1;
 
   return (
     <div className="flex max-w-xl flex-col gap-6">
@@ -32,10 +35,20 @@ export default function TrackPage({
         <p className="mt-2 text-ink-muted">{t("intro")}</p>
       </div>
 
-      <StepIndicator steps={steps} current={current} />
-
-      {/* TODO(phase-1): render OtpStepForm and ResultPanel for steps 2 and 3. */}
-      {current === 1 && <AckStepForm />}
+      {step === "otp" && ack ? (
+        <OtpStep
+          steps={steps}
+          acknowledgementNumber={ack}
+          maskedMobile={mobile ?? ""}
+          initialCaptcha={generateDemoCaptcha()}
+        />
+      ) : (
+        <>
+          <StepIndicator steps={steps} current={1} />
+          <AckStepForm />
+          <p className="text-sm text-ink-muted">{t("demoNote")}</p>
+        </>
+      )}
     </div>
   );
 }

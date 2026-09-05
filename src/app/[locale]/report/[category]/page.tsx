@@ -3,8 +3,8 @@ import { setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { use } from "react";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
 import type { ComplaintCategory } from "@/lib/types";
+import { ReportForm } from "./ReportForm";
 
 const categories = [
   "financial-fraud",
@@ -60,12 +60,7 @@ export default function ReportCategoryPage({
         </Alert>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        <Button size="lg">{t("tracked")}</Button>
-        <Button size="lg" variant="secondary">
-          {t("anonymous")}
-        </Button>
-      </div>
+      <ReportForm category={category as ComplaintCategory} />
     </div>
   );
 }
